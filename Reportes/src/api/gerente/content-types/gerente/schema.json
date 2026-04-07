@@ -1,0 +1,14 @@
+{
+  "kind": "collectionType",
+  "collectionName": "gerentes",
+  "info": {
+    "singularName": "gerente",
+    "pluralName": "gerentes",
+    "displayName": "Gerente"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {}
+}

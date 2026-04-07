@@ -1,0 +1,638 @@
+import { Component, OnInit } from '@angular/core';
+import { ExcelService } from 'src/app/service/exel-service';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { ActivatedRoute } from '@angular/router';
+
+@Component({
+  selector: 'app-global-sucursal',
+  templateUrl: './global-sucursal.page.html',
+  styleUrls: ['./global-sucursal.page.scss'],
+  standalone: false,
+})
+
+export class GlobalSucursalPage implements OnInit {
+  diasHabiles = 26; // Celda A3
+  numAPV = 22;      // Celda B3
+  diaActual = 2;    // Usado para cálculos de columna H
+  reportesPorMes: any = {};
+  mesActual: string = '';
+  sucursal: string = '';
+
+
+
+  constructor(private api: ExcelService, private act: ActivatedRoute,) {
+    this.sucursal = this.act.snapshot.paramMap.get('sucursal') as string;
+  }
+
+  async ngOnInit() {
+    await this.getapv();
+    await this.getGlobal();
+    this.actualizarSemanal();
+    this.agruparPorMes();
+  }
+
+  async getapv() {
+
+    await this.api.getApvSucursal(this.sucursal).then(res => {
+      res.data
+      const dato = res.data.data[0];
+      this.apvDisponibles = dato.Num_apv;
+
+      console.log(`APV disponibles: ${this.apvDisponibles}`);
+    })
+      .catch(err => {
+        console.error(err)
+      });
+  }
+
+  actualizarSemanal() {
+    this.filasPrincipales.forEach(f => {
+      f.sem = this.calcularSemanal(f.concepto, f.mes);
+    });
+
+    this.filasFinales.forEach(f => {
+      f.sem = this.calcularSemanal(f.concepto, f.mes);
+    });
+  }
+
+  diaLimite = '';
+
+  async dispararAutomatizacion() {
+    try {
+      const response = await this.api.diaLimite(this.diaLimite, this.sucursal);
+      await this.api.diaLimite(this.diaLimite, this.sucursal);
+      await this.getGlobal();
+      return response.data;
+
+    } catch (error) {
+      console.error('Error en el servicio Nissan:', error);
+      throw error;
+    }
+  }
+
+
+
+  agruparPorMes() {
+
+    this.reportesPorMes = {};
+
+    for (let r of this.Global) {
+
+      const fecha = new Date(r.fecha);
+
+      const claveMes = `${fecha.getFullYear()}-${fecha.getMonth() + 1}`;
+
+      if (!this.reportesPorMes[claveMes]) {
+        this.reportesPorMes[claveMes] = [];
+      }
+
+      this.reportesPorMes[claveMes].push(r);
+    }
+
+    const meses = Object.keys(this.reportesPorMes);
+
+    if (meses.length > 0) {
+      this.mesActual = meses[meses.length - 1]; // último mes cargado
+    }
+
+  }
+
+  get reportesMesActual() {
+    return this.reportesPorMes[this.mesActual] || [];
+  }
+
+
+async exportarExcelmes() {
+  const workbook = new ExcelJS.Workbook();
+
+  // Se inicia en 1 para omitir el primer elemento de this.Global
+  for (let i = 1; i < this.Global.length; i++) {
+    const reporte = this.Global[i];
+    this.paginaActual = i;
+
+    const fechaStr = reporte.fecha;
+    const diaHojaOriginal = fechaStr.substring(8, 10).replace(/^0/, '');
+    const anio = fechaStr.substring(0, 4);
+    const mes = fechaStr.substring(5, 7);
+    const diaActual = parseInt(fechaStr.substring(8, 10), 10);
+    const diaAnterior = diaActual - 1;
+
+    // VALIDACIÓN: Evita el error duplicando el nombre si ya existe
+    let nombreFinal = diaHojaOriginal;
+    if (workbook.getWorksheet(nombreFinal)) {
+      nombreFinal = `${diaHojaOriginal}_${i}`; // Agrega sufijo único si se repite el día
+    }
+    const worksheet = workbook.addWorksheet(nombreFinal);
+
+    // TÍTULO (Fila 1)
+    worksheet.mergeCells('A1:M1');
+    const titulo = worksheet.getCell('A1');
+    titulo.value = `DESEMPEÑO GLOBAL C/ APV Y F & I (${this.sucursal}) ${diaActual}/${mes}/${anio}`;
+    titulo.font = { bold: true, size: 14 };
+    titulo.alignment = { horizontal: 'center', vertical: 'middle' };
+    titulo.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB3B' } };
+
+    // DÍA HÁBIL ACTUAL (N1)
+    const diasHabilesCell = worksheet.getCell('N1');
+    diasHabilesCell.value = reporte.DIA_HABIL;
+    diasHabilesCell.font = { bold: true };
+    diasHabilesCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    diasHabilesCell.border = this.getBorder();
+
+    // ENCABEZADOS (Fila 2)
+    const headers = [
+      'Días habiles al mes', '#APV', `${this.apvDisponibles} APV`, 'DESEMPEÑO SEMANAL POR APV',
+      'DESEMPEÑO MENSUAL POR APV', 'OBJ DIARIO', 'OBJETIVO MENSUAL',
+      `OBJ. ACUM MENSUAL AL DÍA (${diaActual})`, `REAL ACUMULADO AL DÍA (${diaAnterior})`,
+      'OBJ. DIARIO', `REAL DEL DÍA (${diaActual})`, `ACUMUL. REAL DEL DIA (${diaActual})`, '%'
+    ];
+
+    const headerRow = worksheet.addRow(headers);
+    headerRow.height = 40;
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, size: 9 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = this.getBorder();
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBBDEFB' } };
+    });
+
+    // Función para procesar y agregar filas de datos
+    const agregarFilas = (filas: any[]) => {
+      for (let f of filas) {
+        const campo6 = this.getCampo6(f.concepto, reporte);
+        const campo7 = this.getRealDelDia(f.concepto, reporte);
+        const campo9 = this.getCampo9(f.concepto, reporte);
+        const porcentaje = this.getPorcentaje(f.concepto, reporte, f.mes, reporte.DIA_HABIL);
+
+        const row = worksheet.addRow([
+          this.diasHabiles, this.apvDisponibles, f.concepto, f.sem, f.mes,
+          Math.round(this.calcObjDiario(f.mes)), Math.round(this.calcObjMensual(f.mes)),
+          Math.round(this.calcObjAcumAlDia(f.mes, reporte.DIA_HABIL)),
+          Math.round(campo6), Math.round(this.calcObjDiario(f.mes)),
+          Math.round(campo7), Math.round(campo9), porcentaje
+        ]);
+
+        row.getCell(13).numFmt = '0%';
+        row.eachCell(cell => {
+          cell.border = this.getBorder();
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        const clase = this.getSemaforo(f.concepto, reporte, f.mes, reporte.DIA_HABIL);
+        this.aplicarColorSemaforoExcel(row.getCell(13), clase);
+      }
+    };
+
+    agregarFilas(this.filasPrincipales);
+    agregarFilas(this.filasFinales);
+
+    // Ajuste de anchos de columna
+    worksheet.columns.forEach((column, index) => {
+      column.width = (index === 2) ? 25 : 10;
+    });
+  }
+
+  // Generar y guardar archivo
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, `Reporte_Global_${this.sucursal}.xlsx`);
+}
+
+  getBorder(): Partial<ExcelJS.Borders> {
+    return {
+      top: { style: 'thin' as ExcelJS.BorderStyle },
+      left: { style: 'thin' as ExcelJS.BorderStyle },
+      bottom: { style: 'thin' as ExcelJS.BorderStyle },
+      right: { style: 'thin' as ExcelJS.BorderStyle }
+    };
+  }
+
+  aplicarColorSemaforoExcel(cell: any, clase: string) {
+
+    if (clase === 'verde') {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFC8E6C9' }
+      };
+      cell.font = { bold: true, color: { argb: 'FF1B5E20' } };
+    }
+
+    if (clase === 'rojo') {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFCDD2' }
+      };
+      cell.font = { bold: true, color: { argb: 'FFB71C1C' } };
+    }
+
+    if (clase === 'amarillo') {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFF9C4' }
+      };
+      cell.font = { bold: true, color: { argb: 'FFF57F17' } };
+    }
+  }
+
+  Global: any[] = [];
+
+  async getGlobal() {
+    try {
+
+      const res = await this.api.getDataGlobal(this.sucursal);
+      const datos = res.data.data;
+      console.log("Datos obtenidos de Strapi:", datos);
+      let datosProcesados = datos.map((registro: any) => {
+        if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
+
+        const partes = registro.fecha.split('-');
+        const fechaActual = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+
+        let contadorHabilesInMes = 0;
+        let fechaAux = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+
+        while (fechaAux <= fechaActual) {
+          if (!this.esDiaInhabilMexico(fechaAux)) contadorHabilesInMes++;
+          fechaAux.setDate(fechaAux.getDate() + 1);
+        }
+
+        return { ...registro, DIA_HABIL: contadorHabilesInMes };
+      });
+
+      // 2. ORDENAR POR FECHA
+      this.Global = datosProcesados.sort((a: any, b: any) => {
+        return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+      });
+
+      if (this.Global.length > 0) {
+        this.diaActual = this.Global[this.Global.length - 1].DIA_HABIL;
+        // Llamamos después de ordenar
+        this.agruparPorMes();
+      }
+
+    } catch (error) {
+      console.error("Error al obtener datos:", error);
+    }
+  }
+
+  getRealDelDia(concepto: string, g: any): number {
+    switch (concepto) {
+      case 'PRECONTACTOS': return g?.preContactos || 0;
+      case 'CONTACTOS': return g?.Contactos || 0;
+      case 'PROSPECTOS': return g?.prospectos || 0;
+      case 'SOL C/ DATOS COMPLETOS': return g?.solCDatosCompletos || 0;
+      case 'VIABLES(PRE-AUTORIZADAS)': return g?.viablesPreAutorizadas || 0;
+      case 'CITAS AGENDADAS': return g?.citasAgendadas || 0;
+      case 'CITAS REALES': return g?.citasReales || 0;
+      case 'DOC COMPLETA': return g?.docCompleta || 0;
+      case 'AUTORIZADAS': return g?.autorizadas || 0;
+      case 'PEDIDO CON ANTICIPO': return g?.pedidosConAnticipo || 0;
+      case 'DEMOS': return g?.demos || 0;
+      case 'ENTREGAS': return g?.entregas || 0;
+      case 'DESEMBOLSOS': return g?.desembolsos || 0;
+      default: return 0;
+    }
+  }
+
+  esDiaInhabilMexico(fecha: Date): boolean {
+    const anio = fecha.getFullYear();
+    const mes = fecha.getMonth();
+    const dia = fecha.getDate();
+    const diaSemana = fecha.getDay();
+
+    if (diaSemana === 0) return true;
+
+    const festivosFijos = [
+      { m: 0, d: 1 },
+      { m: 4, d: 1 },
+      { m: 8, d: 16 },
+      { m: 11, d: 25 }
+    ];
+    if (festivosFijos.some(f => f.m === mes && f.d === dia)) return true;
+
+    if (mes === 1) {
+      const primerLunes = this.getN_esimoDiaDelaSemana(anio, 1, 1, 1);
+      if (dia === primerLunes) return true;
+    }
+
+    if (mes === 2) {
+      const tercerLunes = this.getN_esimoDiaDelaSemana(anio, 2, 1, 3);
+      if (dia === tercerLunes) return true;
+    }
+
+    if (mes === 10) {
+      const tercerLunes = this.getN_esimoDiaDelaSemana(anio, 10, 1, 3);
+      if (dia === tercerLunes) return true;
+    }
+
+    return false;
+  }
+
+  acumuladoActual: number = 0;
+
+  cambiarPagina(index: number) {
+
+    this.paginaActual = index;
+
+    if (index === 0) {
+      this.acumuladoActual = 0;
+      return;
+    }
+  }
+
+  private historico = new Map<string, number>();
+
+  // Compara el porcentaje actual contra el del día anterior redondeando a enteros para el semáforo
+  getSemaforo(concepto: string, reporteActual: any, mes: any, diaHabil: number): string {
+
+    const reportes = this.reportesMesActual;
+    const i = reportes.findIndex((r: any) => r.fecha === reporteActual.fecha);
+
+    if (i === -1) return 'verde';
+
+    const fechaHoy = reporteActual.fecha;
+    const fechaAnt = i > 0 ? reportes[i - 1].fecha : null;
+
+    const llaveHoy = `${concepto}-${fechaHoy}`;
+    const llaveAnt = fechaAnt ? `${concepto}-${fechaAnt}` : null;
+
+    const redondear = (v: number) => Math.round(v * 100);
+
+    if (!this.historico.has(llaveHoy)) {
+      const v = this.getPorcentaje(concepto, reporteActual, mes, reporteActual.DIA_HABIL || diaHabil);
+      this.historico.set(llaveHoy, redondear(v));
+    }
+
+    if (llaveAnt && !this.historico.has(llaveAnt)) {
+      const reporteAnt = reportes[i - 1];
+      const vAnt = this.getPorcentaje(concepto, reporteAnt, mes, reporteAnt.DIA_HABIL);
+      this.historico.set(llaveAnt, redondear(vAnt));
+    }
+
+    const actual = this.historico.get(llaveHoy);
+    const anterior = llaveAnt ? this.historico.get(llaveAnt) : undefined;
+
+    if (i <= 0 || actual === undefined || anterior === undefined) return 'verde';
+
+    if (actual > anterior) return 'verde';
+    if (actual < anterior) return 'rojo';
+
+    return 'amarillo';
+  }
+
+  exportarExcel() {
+
+    const tabla = document.getElementById('tablaReporte');
+
+    if (!tabla) return;
+
+    const html = tabla.outerHTML;
+
+    const blob = new Blob([html], {
+      type: 'application/vnd.ms-excel'
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Reporte_Dia_${this.paginaActual + 1}.xls`;
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+  }
+
+  getPorcentaje(concepto: string, reporteActual: any, mes: number, diaHabil: number): number {
+
+    const realAcumulado = this.getCampo9(concepto, reporteActual);
+
+    const objAcumulado = this.calcObjAcumAlDia(mes, diaHabil);
+
+    if (!objAcumulado || objAcumulado === 0) return 0;
+
+    return realAcumulado / objAcumulado;
+  }
+
+  getN_esimoDiaDelaSemana(anio: number, mes: number, diaBuscado: number, n: number): number {
+    let count = 0;
+    let d = new Date(anio, mes, 1);
+    while (d.getMonth() === mes) {
+      if (d.getDay() === diaBuscado) {
+        count++;
+        if (count === n) return d.getDate();
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return -1;
+  }
+
+  // Filas antes de las notas
+  filasPrincipales = [
+    { concepto: 'PRECONTACTOS', desc: ' base de datos, 10 por APV(REGISTRO EN EL SISTEMA, NOMBRE NO. TEL CORREO)', sem: 0, mes: 260, objD: 190, objM: 4940, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'CONTACTOS', desc: ' 10 por APV(CARPETA DE NEG. FICHA TECNICA, OFERTA COMERCIAL)', sem: 0, mes: 260, objD: 190, objM: 4940, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'PROSPECTOS', desc: ' (2 diarios por APV) MANDAR SOLICITUD CON DATOS COMPLETOS Y FIRMADA', mes: 24, objD: 18, objM: 456, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'SOL C/ DATOS COMPLETOS', desc: ' 80% TRAFICO A PISO', sem: 0, mes: 24, objD: 18, objM: 456, rAnterior: 0, rHoy: 0, clase: 'yellow' },
+    { concepto: 'VIABLES(PRE-AUTORIZADAS)', desc: '', sem: 0, mes: 19, objD: 14, objM: 361, rAnterior: 0, rHoy: 0, clase: 'orange' },
+    { concepto: 'CITAS AGENDADAS', desc: '', sem: 0, mes: 24, objD: 18, objM: 456, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'CITAS REALES', desc: '', sem: 0, mes: 13, objD: 10, objM: 247, rAnterior: 0, rHoy: 0, clase: 'yellow' },
+    { concepto: 'DOC COMPLETA', desc: ' 80% VIABLES', mes: 12, sem: 0, objD: 9, objM: 228, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'AUTORIZADAS', desc: ' 40% SOLICITUDES CON DATOS COMPLETOS', sem: 0, mes: 9, objD: 7, objM: 171, rAnterior: 0, rHoy: 0, clase: 'yellow' },
+    { concepto: 'PEDIDO CON ANTICIPO', desc: ' 30% SOL. CON DATOS COMPLETOS', sem: 0, mes: 7, objD: 5, objM: 137, rAnterior: 0, rHoy: 0, clase: 'yellow' }
+  ];
+
+  // Filas después de las notas
+  filasFinales = [
+    { concepto: 'DEMOS', desc: ' 80% TRAFICO A PISO', sem: 0, mes: 15, objD: 11, objM: 274, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'ENTREGAS', desc: ' 100% DESEMBOLSOS', sem: 0, mes: 6, objD: 4, objM: 110, rAnterior: 0, rHoy: 0, clase: '' },
+    { concepto: 'DESEMBOLSOS', desc: ' 70% AUTORIZADAS', sem: 0, mes: 6, objD: 4, objM: 110, rAnterior: 0, rHoy: 0, clase: '' }
+  ];
+
+  // home.page.ts
+  obtenerDia(fecha: any): number {
+    if (!fecha) return 0;
+    return new Date(fecha).getDate();
+  }
+
+  apvDisponibles: any[] = [];
+
+  calcObjDiario(mes: number): number {
+    const valor = (mes * Number(this.apvDisponibles)) / this.diasHabiles;
+
+    return Number(valor.toFixed(3));
+  }
+
+  calcObjMensual(mes: number): number {
+    return this.calcObjDiario(mes) * this.diasHabiles;
+  }
+
+  calcObjAcumAlDia(mes: number, diaHabil: number): number {
+
+    const objDiarioReal = this.calcObjDiario(mes);
+
+    // Si obj diario es 0 usar 1
+    const objParaCalculo = objDiarioReal === 0 ? 1 : objDiarioReal;
+
+    // Si día hábil es 0 usar 1
+    const diaParaCalculo = diaHabil === 0 ? 1 : diaHabil;
+
+    return objParaCalculo * diaParaCalculo;
+  }
+  // filaAnteriorAcum: valor acumulado del día anterior (ACUMUL. REAL DEL DÍA)
+  // realHoy: valor del REAL DEL DÍA actual
+  calcAcumRealDia(filaAnteriorAcum: number, realHoy: number): number {
+    return (filaAnteriorAcum || 0) + (realHoy || 0);
+  }
+
+
+
+
+
+  getCampo6(concepto: string, reporteActual: any): number {
+
+    const reportes = this.reportesMesActual;
+    const index = reportes.findIndex((r: any) => r.fecha === reporteActual.fecha);
+
+    if (index <= 0) return 0;
+
+    let acumulado = 0;
+
+    for (let i = 0; i < index; i++) {
+      const reporte = reportes[i];
+      acumulado += this.getRealDelDia(concepto, reporte);
+    }
+
+    return acumulado;
+  }
+
+  // Método para obtener el valor que estaba en la columna "ACUMUL. REAL DEL DIA"
+  getAcumuladoRealDia(concepto: string, registro: any): number {
+    // Aquí obtienes el valor que se mostró en la columna "ACUMUL. REAL DEL DIA"
+    // para ese registro. Puede ser un campo directo de Strapi o un cálculo
+
+    // Si en Strapi ya tienes un campo que guarda ese valor:
+    switch (concepto) {
+      case 'PRECONTACTOS': return registro?.acumuladoPreContactos || 0;
+      case 'CONTACTOS': return registro?.acumuladoContactos || 0;
+      case 'PROSPECTOS': return registro?.acumuladoProspectos || 0;
+      // ... etc
+      default: return 0;
+    }
+  }
+
+  getAcumuladoDelDia(c6: any, c7: any): number {
+    return Number(c6 || 0) + Number(c7 || 0);
+  }
+
+  calcRealAcumulado(rAnt: number, rHoy: number): number {
+    return (rAnt || 0) + (rHoy || 0);
+  }
+
+  calcRealAcumDiaAnterior(filas: any[], indiceActual: number, g: any): number {
+    const diaHabil = g.DIA_HABIL;
+
+    // Día 1: no hay acumulado anterior
+    if (diaHabil === 1) return 0;
+
+    // Día 2: usar valor del día 1 desde Strapi
+    if (diaHabil === 2) {
+      return this.getRealDelDia(filas[indiceActual].concepto, g);
+    }
+
+    // Día >= 3: usar ACUMULADO REAL DEL DÍA del registro anterior
+    if (indiceActual > 0) {
+      const filaAnterior = filas[indiceActual - 1];
+      return this.calcAcumRealDelDia(filaAnterior.rAnterior, filaAnterior.rHoy);
+    }
+
+    return 0;
+  }
+
+  calcAcumRealDelDia(rAnterior: number, rHoy: number): number {
+    // Aseguramos que nunca sea undefined
+    const rAnt = rAnterior ?? 0;
+    const rH = rHoy ?? 0;
+
+    return rAnt + rH;
+  }
+
+  calcularSemanal(concepto: string, mes: number): number {
+
+    const fijos: { [key: string]: number } = {
+      'VIABLES(PRE-AUTORIZADAS)': 5,
+      'CITAS REALES': 3,
+      'AUTORIZADAS': 2,
+      'PEDIDO CON ANTICIPO': 2,
+      'DEMOS': 4,
+      'ENTREGAS': 2,
+      'DESEMBOLSOS': 2
+    };
+
+    // Si el concepto es fijo, regresa el valor fijo
+    if (fijos[concepto] !== undefined) {
+      return fijos[concepto];
+    }
+
+    // Si no es fijo, dividir mensual entre 4
+    return Math.round(mes / 4);
+  }
+
+  calcularPorcentaje(realAcumulado: number, objAcumulado: number): number {
+    if (!objAcumulado || objAcumulado === 0) return 0;
+    return realAcumulado / objAcumulado;
+  }
+
+  calcH(objD: number) { return objD * this.diaActual; }
+  calcN(rAnt: number, rHoy: number) {
+
+    return (rAnt || 0) + (rHoy || 0);
+  }
+
+  calcO(rAnt: number, rHoy: number) {
+
+    return Number(rAnt || 0) + Number(rHoy || 0);
+  }
+
+  getCampo9(concepto: string, reporteActual: any): number {
+
+    const campo6 = this.getCampo6(concepto, reporteActual);
+    const campo7 = this.getRealDelDia(concepto, reporteActual);
+
+    return Number(campo6 || 0) + Number(campo7 || 0);
+  }
+
+  paginaActual: number = 1;
+  reportesPorPagina: number = 1;
+
+
+  get reporteActual() {
+    return this.Global[this.paginaActual];
+  }
+
+  get totalPaginas(): number {
+    return this.reportesMesActual.length + 1;
+  }
+
+  paginaAnterior() {
+    if (this.paginaActual > 1) {
+      this.paginaActual--;
+    }
+  }
+
+  paginaSiguiente() {
+    if (this.paginaActual < this.totalPaginas) {
+      this.paginaActual++;
+    }
+  }
+
+  irAPrimera() {
+    this.paginaActual = 1;
+  }
+
+  irAUltima() {
+    this.paginaActual = this.totalPaginas;
+  }
+}

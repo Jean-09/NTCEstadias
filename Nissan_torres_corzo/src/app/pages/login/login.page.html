@@ -1,0 +1,26 @@
+<ion-content class="login-background" fullscreen>
+  <div class="login-container">
+    <div class="login-box">
+      <img src="assets/nissan.png" alt="Laundry Icon" class="logo-img" />
+      <h2 class="title">Inicia Sesión</h2>
+      <p class="subtitle">Gas</p>
+
+      <ion-input placeholder="Introduce tu corre o usuario" [(ngModel)]="identifier" type="text"
+        class="custom-input"></ion-input>
+
+      <ion-input placeholder="Password" [(ngModel)]="password" type="password" class="custom-input"></ion-input>
+
+      <ion-button expand="block" (click)="login()" class="login-button">
+        Login
+      </ion-button>
+
+      <div class="links">
+
+      </div>
+      
+      <div id="name"></div>
+    </div>
+
+  </div>
+
+</ion-content>

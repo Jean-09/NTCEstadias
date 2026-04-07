@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "numero_apvs",
+  "info": {
+    "singularName": "numero-apv",
+    "pluralName": "numero-apvs",
+    "displayName": "Numero_apv"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Num_apv": {
+      "type": "integer"
+    },
+    "Sucursal": {
+      "type": "enumeration",
+      "enum": [
+        "Bicentenario",
+        "Zacatecas"
+      ]
+    }
+  }
+}

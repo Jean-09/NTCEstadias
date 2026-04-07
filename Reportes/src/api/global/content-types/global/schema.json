@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "globals",
+  "info": {
+    "singularName": "global",
+    "pluralName": "globals",
+    "displayName": "Global"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "preContactos": {
+      "type": "integer"
+    },
+    "Contactos": {
+      "type": "integer"
+    },
+    "prospectos": {
+      "type": "integer"
+    },
+    "solCDatosCompletos": {
+      "type": "integer"
+    },
+    "viablesPreAutorizadas": {
+      "type": "integer"
+    },
+    "citasAgendadas": {
+      "type": "integer"
+    },
+    "citasReales": {
+      "type": "integer"
+    },
+    "docCompleta": {
+      "type": "integer"
+    },
+    "autorizadas": {
+      "type": "integer"
+    },
+    "pedidosConAnticipo": {
+      "type": "integer"
+    },
+    "demos": {
+      "type": "integer"
+    },
+    "entregas": {
+      "type": "integer"
+    },
+    "desembolsos": {
+      "type": "integer"
+    },
+    "fecha": {
+      "type": "date"
+    },
+    "Sucursal": {
+      "type": "enumeration",
+      "enum": [
+        "Zacatecas",
+        "Bicentenario"
+      ]
+    },
+    "tipo": {
+      "type": "enumeration",
+      "enum": [
+        "Global",
+        "Gerente"
+      ]
+    },
+    "Gerente": {
+      "type": "string"
+    }
+  }
+}

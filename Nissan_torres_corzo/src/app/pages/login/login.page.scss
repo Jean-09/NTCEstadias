@@ -1,0 +1,100 @@
+.login-background {
+  /* Fondo gris claro neutro para que resalte la tarjeta */
+  --background: #f5f5f5;
+  color: #1a1a1a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  /* Eliminé el margin-left fijo para que se centre automáticamente en cualquier pantalla */
+  margin: 0 auto;
+  margin-top: 10%;
+}
+
+.login-box {
+  background: white;
+  padding: 40px 25px;
+  border-radius: 8px; /* Nissan usa bordes más rectos/limpios */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  border-top: 4px solid #c3002f; /* El Rojo Nissan característico */
+}
+
+.logo-img {
+  width: 140px;
+  margin-bottom: 25px;
+  /* Tip: Asegúrate de que el logo sea el nuevo logo minimalista de Nissan */
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin: 0;
+  color: #1a1a1a;
+  text-transform: uppercase; /* Estilo corporativo */
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.custom-input {
+  margin-bottom: 15px;
+  --border-radius: 4px;
+  --padding-start: 15px;
+  --background: #ffffff;
+  /* Añadimos un borde sutil para que se vea más profesional que el gris sólido */
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  color: black;
+}
+
+.login-button {
+  /* El Rojo Nissan sólido es más impactante que un gradiente azul */
+  --background: #c3002f; 
+  --border-radius: 4px;
+  font-weight: bold;
+  margin-top: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  height: 48px;
+}
+
+.links {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.links a {
+  color: #1a1a1a; /* Enlaces en negro para mantener la elegancia */
+  text-decoration: underline;
+}
+
+.links a.create {
+  color: #c3002f; /* El registro resalta en rojo */
+  font-weight: bold;
+  text-decoration: none;
+}
+
+
+#customBtn:hover {
+  background: #f9f9f9;
+  cursor: pointer;
+}
+
+span.buttonText {
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+}

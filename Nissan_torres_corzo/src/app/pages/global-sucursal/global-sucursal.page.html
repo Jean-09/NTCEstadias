@@ -1,0 +1,189 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      Reportes Diarios
+    </ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Card de controles (igual que antes) -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Generador de Reportes</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-item>
+        <ion-label position="stacked">Procesar hasta el día:</ion-label>
+        <ion-input type="number" [(ngModel)]="diaLimite" min="1" max="31"></ion-input>
+      </ion-item>
+      <ion-button expand="block" (click)="dispararAutomatizacion()" class="ion-margin-top" color="success">
+        <ion-icon name="play-outline" slot="start"></ion-icon>
+        Lanzar Automatización
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
+
+
+  <button (click)="exportarExcelmes()">
+    <ion-icon name="download-outline"></ion-icon>
+  </button>
+
+  <!-- Controles de paginación tipo Excel -->
+  <ion-card *ngIf="Global.length > 0">
+
+    <ion-card-content>
+      <div class="pagination-controls">
+        <ion-button size="small" fill="clear" (click)="irAPrimera()" [disabled]="paginaActual <= 1">
+          <ion-icon name="play-back-outline"></ion-icon>
+        </ion-button>
+
+        <ion-button size="small" fill="clear" (click)="paginaAnterior()" [disabled]="paginaActual <= 1">
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </ion-button>
+
+        <span class="pagination-info" *ngIf="reporteActual">
+          Día {{ reporteActual.fecha | date:'d' }} de {{ totalPaginas }} -
+          {{ reporteActual.fecha | date:'dd/MM/yyyy' }}
+        </span>
+
+        <ion-button size="small" fill="clear" (click)="paginaSiguiente()" [disabled]="paginaActual >= totalPaginas ">
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </ion-button>
+        <ion-button size="small" fill="clear" (click)="irAUltima()" [disabled]="paginaActual >= totalPaginas">
+          <ion-icon name="play-forward-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <ion-item>
+        <ion-label>Mes</ion-label>
+
+        <ion-select [(ngModel)]="mesActual">
+
+          <ion-select-option *ngFor="let m of reportesPorMes | keyvalue" [value]="m.key">
+
+            {{ m.key }}
+
+          </ion-select-option>
+
+        </ion-select>
+      </ion-item>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Mostrar SOLO el reporte actual (cambiado de *ngFor a *ngIf) -->
+  <div class="excel-frame" *ngIf="reporteActual && (reporteActual.fecha | date:'d') !== '1'">
+
+    <table id="tablaReporte">
+      <thead>
+        <tr class="row-1">
+          <th colspan="2"></th>
+          <th colspan="13" class="main-title">DESEMPEÑO GLOBAL C/ APV Y F & I (ZACATECAS) {{ reporteActual.fecha | date:
+            'dd/MM/yyyy' }}</th>
+          <th class="yellow-cell">{{reporteActual.DIA_HABIL}}</th>
+        </tr>
+        <tr class="row-2 headers">
+          <th class="vertical-text">Días habiles al mes</th>
+          <th class="vertical-text"># APV</th>
+          <th class="wide-c">{{apvDisponibles}} APV</th>
+          <th>DESEMPEÑO SEMANAL POR APV</th>
+          <th>DESEMPEÑO MENSUAL POR APV</th>
+          <th>OBJ DIARIO</th>
+          <th>OBJETIVO MENSUAL</th>
+          <th class="yellow-cell">OBJ. ACUM MENSUAL AL DIA {{ reporteActual.fecha | date:'d' }}</th>
+          <th>REAL ACUMULADO AL DIA {{ obtenerDia(reporteActual.fecha) }}</th>
+          <th class="blue-header">OBJ. DIARIO</th>
+          <th class="blue-header">REAL DEL DIA {{ reporteActual.fecha | date:'d' }}</th>
+          <th class="yellow-cell">ACUMUL. REAL DEL DIA {{ reporteActual.fecha | date:'d' }}</th>
+          <th>%</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let f of filasPrincipales; let i = index" [ngClass]="f.clase">
+          <td>{{ diasHabiles }}</td>
+          <td>{{ apvDisponibles}}</td>
+          <td class="text-left">
+            <span class="concept-title">{{ f.concepto }}</span>
+            <span class="concept-desc">{{ f.desc }}</span>
+          </td>
+          <td>{{ f.sem }}</td>
+          <td>{{ f.mes }}</td>
+          <td>{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
+          <td>{{ calcObjMensual(f.mes) | number:'1.0-0' }}</td>
+          <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL) | number:'1.0-0' }}</td>
+          <td class="blue-cell bold">
+            {{ getCampo6(f.concepto, reporteActual) }}
+          </td>
+          <td class="blue-cell bold">{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
+          <td class="blue-cell">{{ getRealDelDia(f.concepto, reporteActual) }}</td>
+          <td class="yellow-cell bold">
+            {{ getCampo9(f.concepto, reporteActual) }}
+          </td>
+          <td [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
+            {{ getPorcentaje(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL) | percent:'1.0-0' }}
+          </td>
+        </tr>
+
+        <!-- Notas (sin cambios) -->
+        <tr class="note-row">
+          <td colspan="2"></td>
+          <td colspan="13" class="text-left bold">CONTACTOS: DEBE TENER 1 CARPETA DE NEGOCIACION, 2 COTIZACION, 3 FICHA
+            TECNICA, 4 SOLICITUD DE CREDITO CON NOMBRE DIRECCION Y TELEFONO, DEL CLIENTE EXCLUSIVAMENTE</td>
+        </tr>
+        <tr class="note-row">
+          <td colspan="2"></td>
+          <td colspan="13" class="text-left bold">PROSPECTOS DEBE TENER: 1 SOLICITUD CON DATOS COMPLETOS Y FIRMADA,
+            COTIZACION, DOCUMENTACION (INE)</td>
+        </tr>
+        <tr class="note-row">
+          <td colspan="2"></td>
+          <td colspan="13" class="text-left bold">SICOP VALIDA CLIENTE</td>
+        </tr>
+
+        <tr *ngFor="let f of filasFinales; let i = index" [ngClass]="f.clase">
+          <td>{{ diasHabiles }}</td>
+          <td>{{ apvDisponibles }}</td>
+          <td class="text-left">
+            <span class="concept-title">{{ f.concepto }}</span>
+            <span class="concept-desc">{{ f.desc }}</span>
+          </td>
+          <td>{{ f.sem }}</td>
+          <td>{{ f.mes }}</td>
+          <td>{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
+          <td>{{ calcObjMensual(f.mes) | number:'1.0-0' }}</td>
+          <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL) | number:'1.0-0' }}</td>
+          <td class="blue-cell bold">
+            {{ getCampo6(f.concepto, reporteActual) }}
+          </td>
+          <td class="blue-cell bold">{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
+          <td class="blue-cell">{{ getRealDelDia(f.concepto, reporteActual) }}</td>
+          <td class="yellow-cell bold">
+            {{ getCampo9(f.concepto, reporteActual) }}
+          </td>
+          <td [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
+            {{ getPorcentaje(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL) | percent:'1.0-0' }}
+          </td>
+        </tr>
+
+        <tr class="footer-note">
+          <td colspan="2"></td>
+          <td colspan="13" class="bold text-left">NOTA: ANTES DE CAPTURAR EN SICOP REVISAR QUE LE HAYAN ASIGNADO CODIGO
+            AL CLIENTE Y SE HAYAN CUMPLIDO TODOS LOS PROCESOS ANTERIORES</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- Mensaje si no hay datos -->
+  <ion-card *ngIf="Global.length === 0">
+    <ion-card-content class="ion-text-center">
+      <p>No hay reportes disponibles</p>
+    </ion-card-content>
+  </ion-card>
+</ion-content>

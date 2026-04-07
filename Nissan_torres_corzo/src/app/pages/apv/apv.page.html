@@ -1,0 +1,187 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>APV</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar color="light" *ngIf="gerenteSeleccionado">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 10px;">
+      <ion-button fill="clear" (click)="anteriorGerente()">
+        <ion-icon slot="icon-only" name="chevron-back-outline"></ion-icon>
+      </ion-button>
+
+      <div style="text-align: center; flex-grow: 1;">
+        <strong style="font-size: 1.1em; color: var(--ion-color-primary);">
+          {{ gerenteSeleccionado }}
+        </strong>
+        <div style="font-size: 0.8em; color: gray;">
+          Gerente {{ Object.keys(paginas).indexOf(gerenteSeleccionado) + 1 }} de {{ Object.keys(paginas).length }}
+        </div>
+      </div>
+
+      <ion-button fill="clear" (click)="siguienteGerente()">
+        <ion-icon slot="icon-only" name="chevron-forward-outline"></ion-icon>
+      </ion-button>
+    </div>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-button fill="solid" color="success" (click)="exportarExcel()">
+    <ion-icon slot="start" name="download-outline"></ion-icon>
+    Exportar Excel
+  </ion-button>
+  <div *ngIf="gerenteSeleccionado && paginas[gerenteSeleccionado]" class="pagina">
+
+    <div class="fila-horizontal">
+
+      <div class="columna-lateral">
+        <div class="spacer-header"></div>
+        <div class="spacer-header"></div>
+
+        <div class="seccion-lateral">
+          <div class="titulo-seccion">GLOBAL</div>
+          <div class="fila-lateral" *ngFor="let c of conceptos">{{ c.nombre }}</div>
+        </div>
+
+        <div class="seccion-lateral">
+          <div class="titulo-seccion">{{ gerenteSeleccionado }}</div>
+          <div class="fila-lateral" *ngFor="let c of conceptos">{{ c.nombre }}</div>
+        </div>
+
+        <div class="seccion-lateral" *ngFor="let v of getColumnas(paginas[gerenteSeleccionado])[0]?.vendedores">
+          <div class="titulo-seccion">{{ v.Apv_nombre }}</div>
+          <div class="fila-lateral" *ngFor="let c of conceptos">{{ c.nombre }}</div>
+        </div>
+      </div>
+
+      <div *ngFor="let col of getColumnas(paginas[gerenteSeleccionado]); let iCol = index" class="bloque">
+
+        <div class="cabecera">
+          <div style="color: white;">DIA HÁBIL: {{ calcularDiasHabiles(col.fechaInicio, col.fechaFin) }}</div>
+          <div style="color: white;">INI: {{ col.fechaInicio }} | FIN: {{ col.fechaFin }}</div>
+        </div>
+
+        <div class="seccion">
+          <table class="tabla-excel">
+            <thead>
+              <tr>
+                <th rowspan="2">OBJ AL MES</th>
+                <th rowspan="2">OBJ AL DIA</th>
+                <th colspan="2">MES</th>
+                <th [attr.colspan]="iCol > 0 ? 3 : 2">MADURACIÓN</th>
+              </tr>
+              <tr>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th *ngIf="iCol > 0">D</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of conceptos; let i = index">
+                <td style="background-color: #f2f2f2;">{{ getObjMes(i, 22) }}</td>
+                <td style="background-color: #f2f2f2;">{{ getObjDia(i, col, 22) }}</td>
+                <td style="background-color: white;">{{ col.global?.Mes?.[c.key] || 0 }}</td>
+
+                <td [style]="semaforos['global-' + iCol + '-' + c.key + '-mes']">
+                  {{ getPorcentaje(col.global?.Mes?.[c.key], i, col, 22) }}%
+                </td>
+
+                <td style="background-color: white;">{{ col.global?.Maduracion?.[c.key] || 0 }}</td>
+
+                <td [style]="semaforos['global-' + iCol + '-' + c.key + '-mad']">
+                  {{ getPorcentaje(col.global?.Maduracion?.[c.key], i, col, 22) }}%
+                </td>
+
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i,
+                  col.global) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="seccion">
+          <table class="tabla-excel">
+            <thead>
+              <tr>
+                <th rowspan="2">OBJ AL MES</th>
+                <th rowspan="2">OBJ AL DIA</th>
+                <th colspan="2">MES</th>
+                <th [attr.colspan]="iCol > 0 ? 3 : 2">MADURACIÓN</th>
+              </tr>
+              <tr>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th *ngIf="iCol > 0">D</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of conceptos; let i = index">
+                <td style="background-color: #f2f2f2;">{{ getObjMes(i, col.vendedores.length) }}</td>
+                <td style="background-color: #f2f2f2;">{{ getObjDia(i, col, col.vendedores.length) }}</td>
+                <td style="background-color: white;">{{ col.gerente?.Mes?.[c.key] || 0 }}</td>
+
+                <td [style]="semaforos['gerente-' + iCol + '-' + c.key + '-mes']">
+                  {{ getPorcentaje(col.gerente?.Mes?.[c.key], i, col, col.vendedores.length) }}%
+                </td>
+
+                <td style="background-color: white;">{{ col.gerente?.Maduracion?.[c.key] || 0 }}</td>
+
+                <td [style]="semaforos['gerente-' + iCol + '-' + c.key + '-mad']">
+                  {{ getPorcentaje(col.gerente?.Maduracion?.[c.key], i, col, col.vendedores.length) }}%
+                </td>
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i,
+                  col.gerente) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div *ngFor="let v of col.vendedores; let iV = index" class="seccion">
+          <table class="tabla-excel">
+            <thead>
+              <tr>
+                <th rowspan="2">OBJ AL MES</th>
+                <th rowspan="2">OBJ AL DIA</th>
+                <th colspan="2">MES</th>
+                <th [attr.colspan]="iCol > 0 ? 3 : 2">MADURACIÓN</th>
+              </tr>
+              <tr>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th *ngIf="iCol > 0">D</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of conceptos; let i = index">
+                <td style="background-color: #f2f2f2;">{{ getObjMes(i, 1) }}</td>
+                <td style="background-color: #f2f2f2;">{{ getObjDia(i, col, 1) }}</td>
+                <td style="background-color: white;">{{ v?.Mes?.[c.key] || 0 }}</td>
+
+                <td [style]="semaforos['vendedor-' + iV + '-' + iCol + '-' + c.key + '-mes']">
+                  {{ getPorcentaje(v?.Mes?.[c.key], i, col, 1) }}%
+                </td>
+
+                <td style="background-color: white;">{{ v?.Maduracion?.[c.key] || 0 }}</td>
+                <td [style]="semaforos['vendedor-' + iV + '-' + iCol + '-' + c.key + '-mad']">
+                  {{ getPorcentaje(v?.Maduracion?.[c.key], i, col, 1) }}%
+                </td>
+
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i, v) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</ion-content>

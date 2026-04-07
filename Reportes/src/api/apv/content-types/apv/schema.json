@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "apvs",
+  "info": {
+    "singularName": "apv",
+    "pluralName": "apvs",
+    "displayName": "Apv"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Apv_nombre": {
+      "type": "string"
+    },
+    "tipo_registro": {
+      "type": "enumeration",
+      "enum": [
+        "GLOBAL",
+        "GERENTE",
+        "VENDEDOR"
+      ]
+    },
+    "Fecha_inicio": {
+      "type": "date"
+    },
+    "Gerente": {
+      "type": "string"
+    },
+    "Fecha_fin": {
+      "type": "date"
+    },
+    "Mes": {
+      "type": "json"
+    },
+    "Maduracion": {
+      "type": "json"
+    },
+    "Agencia": {
+      "type": "enumeration",
+      "enum": [
+        "Bicentenario",
+        "Zacatecas"
+      ]
+    }
+  }
+}

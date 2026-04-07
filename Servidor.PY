@@ -18,6 +18,7 @@ def correr():
     token = request.headers.get('Authorization')
 
     script_path = os.path.join(os.path.dirname(__file__), "reporte_nissan.py")
+    print(token)
 
     comando = f'python "{script_path}" {dia} "{token}" "{sucursal}"'
 

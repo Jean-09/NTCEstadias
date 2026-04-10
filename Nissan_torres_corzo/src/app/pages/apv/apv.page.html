@@ -1,6 +1,6 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>APV</ion-title>
+    <ion-title>APV {{sucursal}}</ion-title>
     <ion-buttons slot="start">
       <ion-back-button></ion-back-button>
     </ion-buttons>
@@ -29,6 +29,23 @@
 </ion-header>
 
 <ion-content>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Generador de Reportes</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-item>
+        <ion-label position="stacked">Procesar hasta el día:</ion-label>
+        <ion-input type="number" [(ngModel)]="diaLimite" min="1" max="31"></ion-input>
+      </ion-item>
+      <ion-button expand="block" (click)="dispararAutomatizacion()" class="ion-margin-top" color="success">
+        <ion-icon name="play-outline" slot="start"></ion-icon>
+        Lanzar Automatización
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
   <ion-button fill="solid" color="success" (click)="exportarExcel()">
     <ion-icon slot="start" name="download-outline"></ion-icon>
     Exportar Excel

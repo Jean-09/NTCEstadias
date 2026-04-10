@@ -1,286 +1,169 @@
 import win32com.client
+import pythoncom
 import time
 import os
 import requests
-from datetime import datetime, timedelta
+import sys
+import calendar
+from datetime import datetime
+import gc
+import win32event
+import win32api
+import winerror
 
-# --- CONFIGURACIÓN ---
-RUTA_EXCEL = r"C:\Users\jeanl\Downloads\jgyn5k0aZuBmDgkvmusCNA8h.xlsm"
-HOJA_NOMBRE = "Reportes"
-STRAPI_URL = "http://localhost:1337/api/apvs"
+# --- CONFIGURACIÓN Y MUTEX ---
+mutex = win32event.CreateMutex(None, False, "Global\\REPORTE_APVS_FINAL_MUTEX")
+if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+    sys.exit(0)
 
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzc0MjM0MDc3LCJleHAiOjE3NzY4MjYwNzd9.oZS__AyaVQZoGU-dTCJpLNho-xzc7waquuWf2p5wOEw"
+DIA_LIMITE_SOLICITADO = int(sys.argv[1]) if len(sys.argv) > 1 else 31
+TOKEN = sys.argv[2] if len(sys.argv) > 2 else None
+SUCURSAL_BUSQUEDA = (sys.argv[3] if len(sys.argv) > 3 else "Zacatecas").strip()
 
-MACROS_MES = ["CambiarColorAzul_Boton9", "CambiarColorAzul_Boton11"]
-MACROS_MAD = ["CambiarColorAzul_Boton10", "CambiarColorAzul_Boton12"]
+HOJA_NOMBRE = "Reportes" 
+API_BASE = "http://localhost:1337/api"
+STRAPI_URL_APVS = f"{API_BASE}/apvs"
+API_URL_SUCURSALES = f"{API_BASE}/sucursals"
 
-# SESSION (🔥 mejora brutal)
 session = requests.Session()
-session.headers.update({
-    "Authorization": f"Bearer {TOKEN}",
-    "Content-Type": "application/json"
-})
+if TOKEN:
+    session.headers.update({"Authorization": f"{TOKEN}", "Content-Type": "application/json"})
 
-# CACHE (🔥 evita GET repetidos)
-cache = {}
+DOC_ID_SUCURSAL = None
+NOMBRE_ARCHIVO = None
 
-def wait_excel(excel):
-    while not excel.Ready:
-        time.sleep(0.05)
+def obtener_configuracion_sucursal():
+    global DOC_ID_SUCURSAL, NOMBRE_ARCHIVO
+    try:
+        res = session.get(f"{API_URL_SUCURSALES}?filters[Sucursal][$eq]={SUCURSAL_BUSQUEDA}")
+        if res.ok:
+            datos = res.json().get('data', [])
+            if datos:
+                suc = datos[0]
+                DOC_ID_SUCURSAL = suc.get('documentId')
+                archivo_db = suc.get('Plantilla') 
+                path_dl = os.path.join(os.path.expanduser("~"), "Downloads")
+                NOMBRE_ARCHIVO = os.path.join(path_dl, archivo_db)
+                return True
+        return False
+    except Exception: return False
 
-def formato_num(v):
-    if v is None:
-        return 0
-    return int(v) if isinstance(v, float) and v.is_integer() else v
+def calcular_dias_corte(anio, mes, limite):
+    dias = []
+    u_dia_mes = calendar.monthrange(anio, mes)[1]
+    actual = 3
+    while actual <= limite:
+        f_temp = datetime(anio, mes, actual)
+        if f_temp.weekday() == 6: actual += 1
+        if actual > limite: break
+        dias.append(actual)
+        actual += 2
+    if limite >= (u_dia_mes - 1): 
+        if not dias or dias[-1] != limite:
+            dias.append(limite)
+    return dias
 
-# EXTRAER BLOQUE
 def extraer_bloque(ws, fila):
-    vals = ws.Range(ws.Cells(fila,186), ws.Cells(fila+7,186)).Value
+    vals = ws.Range(ws.Cells(fila, 186), ws.Cells(fila + 7, 186)).Value
+    def f_n(v):
+        try: return int(float(v)) if v is not None else 0
+        except: return 0
     return {
-        "citas_asistidas": formato_num(vals[0][0]),
-        "solicitudes_cdatos": formato_num(vals[1][0]),
-        "doc_compl_mes": formato_num(vals[2][0]),
-        "autorizadas": formato_num(vals[3][0]),
-        "pedidos_canticipo": formato_num(vals[4][0]),
-        "facturadas": formato_num(vals[5][0]),
-        "desenbolsadas": formato_num(vals[6][0]),
-        "entregas": formato_num(vals[7][0])
+        "citas_asistidas": f_n(vals[0][0]), "solicitudes_cdatos": f_n(vals[1][0]),
+        "doc_compl_mes": f_n(vals[2][0]), "autorizadas": f_n(vals[3][0]),
+        "pedidos_canticipo": f_n(vals[4][0]), "facturadas": f_n(vals[5][0]),
+        "desenbolsadas": f_n(vals[6][0]), "entregas": f_n(vals[7][0])
     }
 
-# EXTRAER VENDEDORES
-def extraer_vendedores(ws, fila_inicio):
-    vendedores = []
-    f_v = fila_inicio
-    cuenta_v = 0
-
-    while True:
-        v_nom = ws.Cells(f_v, 171).Value
-
-        if not v_nom or str(v_nom).strip() == "" or "TOTAL" in str(v_nom).upper():
-            break
-
-        nombre = str(v_nom).strip()
-        data = extraer_bloque(ws, f_v + 1)
-
-        vendedores.append({
-            "nombre": nombre,
-            "data": data
-        })
-
-        cuenta_v += 1
-
-        if cuenta_v == 1:
-            f_v += 10
-        elif cuenta_v == 2:
-            f_v += 11
-        else:
-            f_v += 10
-
-    return vendedores
-
-# VALIDACIÓN
-def validar_cambios(actual, nuevo):
-
-    hubo_cambios = False
-
-    for tipo in ["Mes", "Maduracion"]:
-
-        actual_data = actual.get(tipo, {}) or {}
-        nuevo_data = nuevo.get(tipo, {}) or {}
-
-        for key in nuevo_data:
-
-            viejo = actual_data.get(key, 0)
-            nuevo_val = nuevo_data.get(key, 0)
-
-            try:
-                viejo = int(viejo)
-                nuevo_val = int(nuevo_val)
-            except:
-                pass
-
-            if viejo > 0 and nuevo_val == 0:
-                nuevo_data[key] = viejo
-                continue
-
-            if viejo != nuevo_val:
-                hubo_cambios = True
-
-        nuevo[tipo] = nuevo_data
-
-    return hubo_cambios
-
-# GUARDAR / ACTUALIZAR
 def guardar_o_actualizar(payload):
-
     try:
-        key = f"{payload['Fecha_inicio']}_{payload['Fecha_fin']}_{payload['tipo_registro']}_{payload['Apv_nombre']}"
-
-        if key in cache:
-            existente = cache[key]
+        params = {
+            "filters[Fecha_fin][$eq]": payload["Fecha_fin"],
+            "filters[tipo_registro][$eq]": payload["tipo_registro"],
+            "filters[Apv_nombre][$eq]": payload["Apv_nombre"],
+            "filters[sucursal][documentId][$eq]": DOC_ID_SUCURSAL
+        }
+        res_get = session.get(STRAPI_URL_APVS, params=params)
+        data = res_get.json().get("data", [])
+        if data:
+            session.put(f"{STRAPI_URL_APVS}/{data[0]['documentId']}", json={"data": payload})
         else:
-            params = {
-                "filters[Fecha_inicio][$eq]": payload["Fecha_inicio"],
-                "filters[Fecha_fin][$eq]": payload["Fecha_fin"],
-                "filters[tipo_registro][$eq]": payload["tipo_registro"],
-                "filters[Apv_nombre][$eq]": payload["Apv_nombre"]
-            }
+            session.post(STRAPI_URL_APVS, json={"data": payload})
+    except Exception: pass
 
-            response = session.get(STRAPI_URL, params=params)
-            existente = response.json()["data"]
-            cache[key] = existente
-
-        if existente:
-
-            registro = existente[0]
-            id_registro = registro["id"]
-
-            if not validar_cambios(registro, payload):
-                print(f"[SKIP] {payload['Apv_nombre']}")
-                return
-
-            update_url = f"{STRAPI_URL}/{id_registro}"
-            session.put(update_url, json={"data": payload})
-
-            print(f"[UPDATE] {payload['tipo_registro']} - {payload['Apv_nombre']}")
-
-        else:
-            session.post(STRAPI_URL, json={"data": payload})
-            print(f"[CREATE] {payload['tipo_registro']} - {payload['Apv_nombre']}")
-
-    except Exception as e:
-        print(f"[ERROR] {e}")
-
-# MAIN
 def ejecutar():
+    if not obtener_configuracion_sucursal() or not os.path.exists(NOMBRE_ARCHIVO): return
+
+    excel = win32com.client.DispatchEx("Excel.Application")
+    excel.Visible = False
+    excel.DisplayAlerts = False
 
     try:
-        dia_limite = int(input("Día límite: "))
-    except:
-        return
-
-    excel = None
-
-    try:
-        print("[1] Iniciando Excel...")
-
-        excel = win32com.client.DispatchEx("Excel.Application")
-
-        # 🔥 boost brutal
-        excel.ScreenUpdating = False
-        excel.DisplayAlerts = False
-        excel.EnableEvents = False
-
-        wb = excel.Workbooks.Open(os.path.abspath(RUTA_EXCEL))
+        wb = excel.Workbooks.Open(os.path.abspath(NOMBRE_ARCHIVO))
         ws = wb.Sheets(HOJA_NOMBRE)
+        raw_f = str(ws.Cells(2, 185).Value).replace("*", "").strip()
+        f_base = datetime.strptime(raw_f, "%d-%m-%Y")
+        f_ini_iso = f_base.replace(day=1).strftime("%Y-%m-%d")
+        dias_corte = calcular_dias_corte(f_base.year, f_base.month, DIA_LIMITE_SOLICITADO)
 
-        excel.Application.Run("MostrarRangoTRIMESTRAXAPV")
-        wait_excel(excel)
-
-        dv = ws.Range("FO15").Validation
-        gerentes = [str(c.Value).strip() for c in ws.Application.Range(dv.Formula1) if c.Value]
-
-        hoy = datetime.now()
-        f_inicio_fija = hoy.replace(day=1).strftime("%Y-%m-%d")
-        f_tope = hoy.replace(day=min(dia_limite, hoy.day - 1))
+        gerentes = [str(c.Value).strip() for c in ws.Application.Range(ws.Range("FO15").Validation.Formula1) if c.Value]
 
         for g in gerentes:
-
-            if "POR ASIGNAR GERENTE" in g.upper():
-                break
-
-            print(f"\nGERENTE: {g}")
-
+            if "POR ASIGNAR" in g.upper() or not g: continue
             ws.Cells(15, 171).Value = g
-            wait_excel(excel)
 
-            f_ini_cursor = hoy.replace(day=1)
+            for d in dias_corte:
+                f_fin_iso = datetime(f_base.year, f_base.month, d).strftime("%Y-%m-%d")
+                ws.Cells(3, 185).Value = datetime(f_base.year, f_base.month, d).strftime("%d-%m-%Y") + "*"
+                
+                # --- EXTRACCIÓN DATOS MES ---
+                try:
+                    for m in ["Boton9", "Boton11"]: excel.Application.Run(f"CambiarColorAzul_{m}")
+                except: pass
+                
+                mes_global = extraer_bloque(ws, 6)
+                mes_gerente = extraer_bloque(ws, 16)
+                v_mes_list = []
+                f_v, cv = 29, 0
+                while True:
+                    nom = ws.Cells(f_v, 171).Value
+                    if not nom or "TOTAL" in str(nom).upper(): break
+                    v_mes_list.append({"n": str(nom).strip(), "d": extraer_bloque(ws, f_v + 1)})
+                    cv += 1
+                    f_v += 11 if cv == 2 else 10
 
-            while f_ini_cursor <= f_tope:
+                # --- EXTRACCIÓN DATOS MADURACIÓN ---
+                try:
+                    for m in ["Boton10", "Boton12"]: excel.Application.Run(f"CambiarColorAzul_{m}")
+                except: pass
 
-                f_fin_ciclo = f_ini_cursor + timedelta(days=2)
+                mad_global = extraer_bloque(ws, 6)
+                mad_gerente = extraer_bloque(ws, 16)
+                v_mad_dict = {}
+                f_v, cv = 29, 0
+                while True:
+                    nom = ws.Cells(f_v, 171).Value
+                    if not nom or "TOTAL" in str(nom).upper(): break
+                    v_mad_dict[str(nom).strip()] = extraer_bloque(ws, f_v + 1)
+                    cv += 1
+                    f_v += 11 if cv == 2 else 10
 
-                if f_fin_ciclo.weekday() == 6:
-                    f_fin_ciclo += timedelta(days=1)
-
-                if f_fin_ciclo > f_tope:
-                    break
-
-                f_iso_fin = f_fin_ciclo.strftime("%Y-%m-%d")
-                f_excel_busqueda = f_fin_ciclo.strftime("%d-%m-%Y") + "*"
-
-                ws.Cells(3, 185).Value = f_excel_busqueda
-                wait_excel(excel)
-
-                # MES
-                for m in MACROS_MES:
-                    excel.Application.Run(m)
-                wait_excel(excel)
-
-                global_mes = extraer_bloque(ws, 6)
-                gerente_mes = extraer_bloque(ws, 16)
-                vendedores_mes = extraer_vendedores(ws, 29)
-
-                # MAD
-                for m in MACROS_MAD:
-                    excel.Application.Run(m)
-                wait_excel(excel)
-
-                global_mad = extraer_bloque(ws, 6)
-                gerente_mad = extraer_bloque(ws, 16)
-                vendedores_mad = extraer_vendedores(ws, 29)
-
-                # GLOBAL
-                guardar_o_actualizar({
-                    "tipo_registro": "GLOBAL",
-                    "Apv_nombre": "GLOBAL",
-                    "Fecha_inicio": f_inicio_fija,
-                    "Fecha_fin": f_iso_fin,
-                    "Mes": global_mes,
-                    "Maduracion": global_mad,
-                    "Agencia": "Zacatecas"
-                })
-
-                # GERENTE
-                guardar_o_actualizar({
-                    "tipo_registro": "GERENTE",
-                    "Gerente": g,
-                    "Apv_nombre": g,
-                    "Fecha_inicio": f_inicio_fija,
-                    "Fecha_fin": f_iso_fin,
-                    "Mes": gerente_mes,
-                    "Maduracion": gerente_mad,
-                    "Agencia": "Zacatecas"
-                })
-
-                # VENDEDORES
-                for i, v in enumerate(vendedores_mes):
-                    guardar_o_actualizar({
-                        "tipo_registro": "VENDEDOR",
-                        "Gerente": g,
-                        "Apv_nombre": v["nombre"],
-                        "Fecha_inicio": f_inicio_fija,
-                        "Fecha_fin": f_iso_fin,
-                        "Mes": v["data"],
-                        "Maduracion": vendedores_mad[i]["data"],
-                        "Agencia": "Zacatecas"
-                    })
-
-                f_ini_cursor = f_fin_ciclo
+                # --- GUARDADO FINAL ---
+                base = {"Fecha_inicio": f_ini_iso, "Fecha_fin": f_fin_iso, "sucursal": DOC_ID_SUCURSAL}
+                
+                guardar_o_actualizar({**base, "tipo_registro": "GLOBAL", "Apv_nombre": "GLOBAL", "Gerente": "GLOBAL", "Mes": mes_global, "Maduracion": mad_global})
+                guardar_o_actualizar({**base, "tipo_registro": "GERENTE", "Gerente": g, "Apv_nombre": g, "Mes": mes_gerente, "Maduracion": mad_gerente})
+                
+                for v in v_mes_list:
+                    nom_v = v["n"]
+                    guardar_o_actualizar({**base, "tipo_registro": "VENDEDOR", "Gerente": g, "Apv_nombre": nom_v, "Mes": v["d"], "Maduracion": v_mad_dict.get(nom_v, v["d"])})
 
         wb.Save()
-        print("\n[FIN] Proceso completado.")
-
-    except Exception as e:
-        print(f"[FATAL ERROR] {e}")
-
+        print("✅ Sincronización exitosa.")
     finally:
-        if excel:
-            try:
-                wb.Close(SaveChanges=True)
-            except:
-                pass
-            excel.Quit()
+        if 'wb' in locals(): wb.Close(False)
+        excel.Quit()
+        gc.collect()
 
 if __name__ == "__main__":
     ejecutar()

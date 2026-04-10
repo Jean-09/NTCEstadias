@@ -1,9 +1,9 @@
 'use strict';
 
 /**
- * gerente controller
+ * sucursal controller
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
-module.exports = createCoreController('api::gerente.gerente');
+module.exports = createCoreController('api::sucursal.sucursal');

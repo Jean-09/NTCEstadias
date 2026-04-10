@@ -1,9 +1,9 @@
 'use strict';
 
 /**
- * gerente router
+ * sucursal router
  */
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = createCoreRouter('api::gerente.gerente');
+module.exports = createCoreRouter('api::sucursal.sucursal');

@@ -1,0 +1,97 @@
+.excel-frame {
+  padding: 5px;
+  background: #fff;
+  overflow: auto;
+  color: black;
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    border: 1px solid #000;
+
+    th, td { border: 1px solid #000; padding: 3px; text-align: center; }
+
+    .main-title { background: #BDD7EE; font-size: 16px; font-weight: bold; }
+    .headers { font-weight: bold; }
+    
+    .vertical-text { writing-mode: vertical-rl; transform: rotate(180deg); }
+    .wide-c { width: 300px; font-size: 14px; font-weight: bold; }
+    
+    .text-left { text-align: left; }
+    .bold { font-weight: bold; }
+
+    // Colores de la imagen
+    .yellow-cell { background: #FFFF00; }
+    .blue-header { background: #BDD7EE; }
+    .blue-cell { background: #DDEBF7; }
+    
+    // Clases por fila
+    .yellow { background: #FFFF00; }
+    .orange { background: #FFC000; color: #FF0000; font-weight: bold; }
+    
+    .concept-title { font-weight: bold; color: #FF0000; } // Textos rojos en conceptos
+    .concept-desc { font-size: 9px; color: #000; font-weight: normal; }
+
+    input { width: 100%; border: none; background: transparent; text-align: center; font-weight: bold; }
+
+    .note-row td { background: #f9f9f9; font-size: 9px; }
+    .footer-note td { text-align: left; padding: 10px; font-size: 10px; }
+  }
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  .pagination-info {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 16px;
+    min-width: 200px;
+    text-align: center;
+  }
+}
+
+// Tus estilos existentes para la tabla
+.excel-frame {
+  overflow-x: auto;
+  padding: 16px;
+  
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 1800px;
+    
+    th, td {
+      border: 1px solid #000;
+      padding: 8px;
+      text-align: center;
+      font-size: 12px;
+    }
+    
+    // Resto de tus estilos...
+  }
+}
+
+.verde {
+  background-color: #d4edda;
+  color: #155724;
+  font-weight: bold;
+}
+
+.rojo {
+  background-color: #f8d7da;
+  color: #721c24;
+  font-weight: bold;
+}
+
+.amarillo {
+  background-color: #fff3cd;
+  color: #856404;
+  font-weight: bold;
+}

@@ -16,7 +16,7 @@ const routes: Routes = [
     loadChildren: () => import('./pages/login/login.module').then( m => m.LoginPageModule)
   },
   {
-    path: 'apv',
+    path: 'apv/:sucursal',
     loadChildren: () => import('./pages/apv/apv.module').then( m => m.APVPageModule)
   },
   {
@@ -27,6 +27,11 @@ const routes: Routes = [
     path: 'global-sucursal/:sucursal',
     loadChildren: () => import('./pages/global-sucursal/global-sucursal.module').then( m => m.GlobalSucursalPageModule)
   },
+  {
+    path: 'global-gerente/:sucursal',
+    loadChildren: () => import('./pages/global-gerente/global-gerente.module').then( m => m.GlobalGerentePageModule)
+  },
+
 ];
 
 @NgModule({

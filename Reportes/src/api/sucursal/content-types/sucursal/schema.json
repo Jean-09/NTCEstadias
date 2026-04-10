@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sucursals",
+  "info": {
+    "singularName": "sucursal",
+    "pluralName": "sucursals",
+    "displayName": "Sucursal"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Sucursal": {
+      "type": "string"
+    },
+    "Plantilla": {
+      "type": "string"
+    },
+    "apvs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::apv.apv",
+      "mappedBy": "sucursal"
+    },
+    "globals": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::global.global",
+      "mappedBy": "sucursal"
+    },
+    "numero_apv": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::numero-apv.numero-apv",
+      "mappedBy": "sucursal"
+    }
+  }
+}

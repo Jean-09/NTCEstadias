@@ -10,7 +10,7 @@
 </ion-header>
 
 <ion-content>
-  <!-- Card de controles (igual que antes) -->
+  <!-- Card de Automatización -->
   <ion-card>
     <ion-card-header>
       <ion-card-title>Generador de Reportes</ion-card-title>
@@ -27,17 +27,27 @@
     </ion-card-content>
   </ion-card>
 
+  <!-- Botones de Exportación Reorganizados -->
+  <ion-row class="ion-padding-horizontal">
+    <ion-col size="6">
+      <ion-button expand="block" fill="outline" (click)="exportarExcelmes()">
+        <ion-icon name="download-outline" slot="start"></ion-icon>
+        Excel Actual
+      </ion-button>
+    </ion-col>
+    <ion-col size="6">
+      <ion-button expand="block" color="tertiary" (click)="exportarTodosLosGerentes()">
+        <ion-icon name="copy-outline" slot="start"></ion-icon>
+        Todo x Gerente
+      </ion-button>
+    </ion-col>
+  </ion-row>
 
-
-  <button (click)="exportarExcelmes()">
-    <ion-icon name="download-outline"></ion-icon>
-  </button>
-
-  <!-- Controles de paginación tipo Excel -->
+  <!-- Controles de paginación y filtros -->
   <ion-card *ngIf="Global.length > 0">
-
     <ion-card-content>
-      <div class="pagination-controls">
+      <div class="pagination-controls"
+        style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
         <ion-button size="small" fill="clear" (click)="irAPrimera()" [disabled]="paginaActual <= 1">
           <ion-icon name="play-back-outline"></ion-icon>
         </ion-button>
@@ -46,47 +56,50 @@
           <ion-icon name="chevron-back-outline"></ion-icon>
         </ion-button>
 
-        <span class="pagination-info" *ngIf="reporteActual">
-          <!-- Cambiamos 'Día' por la variable de navegación real -->
+        <span class="pagination-info" *ngIf="reporteActual"
+          style="font-size: 0.9em; font-weight: bold; margin: 0 10px;">
           Reporte {{ paginaActual }} de {{ totalPaginas }} -
           {{ reporteActual.fecha | date:'dd/MM/yyyy' }}
         </span>
 
-        <ion-button (click)="paginaSiguiente()" [disabled]="paginaActual >= Global.length - 1">
+        <ion-button size="small" fill="clear" (click)="paginaSiguiente()" [disabled]="paginaActual >= Global.length">
           <ion-icon name="chevron-forward-outline"></ion-icon>
         </ion-button>
 
-        <!-- Botón Última -->
-        <ion-button (click)="irAUltima()" [disabled]="paginaActual >= Global.length - 1">
+        <ion-button size="small" fill="clear" (click)="irAUltima()" [disabled]="paginaActual >= Global.length">
           <ion-icon name="play-forward-outline"></ion-icon>
         </ion-button>
       </div>
 
+      <!-- FILTRO DE GERENTE -->
       <ion-item>
+        <ion-label>Gerente</ion-label>
+        <ion-select [(ngModel)]="gerenteSeleccionado" (ionChange)="actualizarMeses()">
+          <ion-select-option *ngFor="let g of gerentesLista" [value]="g">{{ g }}</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <!-- FILTRO DE MES -->
+      <ion-item *ngIf="gerenteSeleccionado">
         <ion-label>Mes</ion-label>
-
-        <ion-select [(ngModel)]="mesActual">
-
-          <ion-select-option *ngFor="let m of reportesPorMes | keyvalue" [value]="m.key">
-
+        <ion-select [(ngModel)]="mesActual" (ionChange)="actualizarVistaPrevia()">
+          <ion-select-option *ngFor="let m of reportesPorGerente[gerenteSeleccionado] | keyvalue" [value]="m.key">
             {{ m.key }}
-
           </ion-select-option>
-
         </ion-select>
       </ion-item>
     </ion-card-content>
   </ion-card>
 
-  <!-- Mostrar SOLO el reporte actual (cambiado de *ngFor a *ngIf) -->
-  <div class="excel-frame" *ngIf="reporteActual && paginaActual !== 0">
-
+  <!-- Tabla de Reporte con tus estilos originales -->
+  <div class="excel-frame" *ngIf="reporteActual && obtenerDia(reporteActual.fecha) !== 0">
     <table id="tablaReporte">
       <thead>
         <tr class="row-1">
           <th colspan="2"></th>
-          <th colspan="13" class="main-title">DESEMPEÑO GLOBAL C/ APV Y F & I (ZACATECAS) {{ reporteActual.fecha | date:
-            'dd/MM/yyyy' }}</th>
+          <th colspan="13" class="main-title">
+            DESEMPEÑO GLOBAL C/ APV Y F & I ({{sucursal.Sucursal}}) {{ reporteActual.fecha | date:'dd/MM/yyyy' }}
+          </th>
           <th class="yellow-cell">{{reporteActual.DIA_HABIL}}</th>
         </tr>
         <tr class="row-2 headers">
@@ -98,7 +111,7 @@
           <th>OBJ DIARIO</th>
           <th>OBJETIVO MENSUAL</th>
           <th class="yellow-cell">OBJ. ACUM MENSUAL AL DIA {{ reporteActual.fecha | date:'d' }}</th>
-          <th>REAL ACUMULADO AL DIA {{ obtenerDia(reporteActual.fecha) }}</th>
+          <th>REAL ACUMULADO AL DIA {{ obtenerDia(reporteActual.fecha) - 1 }}</th>
           <th class="blue-header">OBJ. DIARIO</th>
           <th class="blue-header">REAL DEL DIA {{ reporteActual.fecha | date:'d' }}</th>
           <th class="yellow-cell">ACUMUL. REAL DEL DIA {{ reporteActual.fecha | date:'d' }}</th>
@@ -107,6 +120,7 @@
       </thead>
 
       <tbody>
+        <!-- Filas Principales -->
         <tr *ngFor="let f of filasPrincipales; let i = index" [ngClass]="f.clase">
           <td>{{ diasHabiles }}</td>
           <td>{{ apvDisponibles}}</td>
@@ -117,22 +131,25 @@
           <td>{{ f.sem }}</td>
           <td>{{ f.mes }}</td>
           <td>{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
-          <td>{{ calcObjMensual(f.mes) | number:'1.0-0' }}</td>
+          <td>{{ calcObjMensual(+f.mes) | number:'1.0-0' }}</td>
           <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL) | number:'1.0-0' }}</td>
           <td class="blue-cell bold">
-            {{ getCampo6(f.concepto, reporteActual) }}
+            {{ getCampo6(f.concepto, reporteActual) | number:'1.0-0' }}
           </td>
           <td class="blue-cell bold">{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
           <td class="blue-cell">{{ getRealDelDia(f.concepto, reporteActual) }}</td>
           <td class="yellow-cell bold">
-            {{ getCampo9(f.concepto, reporteActual) }}
+            {{ getCampo9(f.concepto, reporteActual) | number:'1.0-0' }}
           </td>
-          <td [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
+          <td *ngIf="reporteActual && f.mes"
+            [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
+
             {{ getPorcentaje(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL) | percent:'1.0-0' }}
+
           </td>
         </tr>
 
-        <!-- Notas (sin cambios) -->
+        <!-- Notas Intermedias -->
         <tr class="note-row">
           <td colspan="2"></td>
           <td colspan="13" class="text-left bold">CONTACTOS: DEBE TENER 1 CARPETA DE NEGOCIACION, 2 COTIZACION, 3 FICHA
@@ -148,6 +165,7 @@
           <td colspan="13" class="text-left bold">SICOP VALIDA CLIENTE</td>
         </tr>
 
+        <!-- Filas Finales -->
         <tr *ngFor="let f of filasFinales; let i = index" [ngClass]="f.clase">
           <td>{{ diasHabiles }}</td>
           <td>{{ apvDisponibles }}</td>
@@ -161,18 +179,19 @@
           <td>{{ calcObjMensual(f.mes) | number:'1.0-0' }}</td>
           <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL) | number:'1.0-0' }}</td>
           <td class="blue-cell bold">
-            {{ getCampo6(f.concepto, reporteActual) }}
+            {{ getCampo6(f.concepto, reporteActual) | number:'1.0-0' }}
           </td>
           <td class="blue-cell bold">{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
           <td class="blue-cell">{{ getRealDelDia(f.concepto, reporteActual) }}</td>
           <td class="yellow-cell bold">
-            {{ getCampo9(f.concepto, reporteActual) }}
+            {{ getCampo9(f.concepto, reporteActual) | number:'1.0-0' }}
           </td>
           <td [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
             {{ getPorcentaje(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL) | percent:'1.0-0' }}
           </td>
         </tr>
 
+        <!-- Nota Final -->
         <tr class="footer-note">
           <td colspan="2"></td>
           <td colspan="13" class="bold text-left">NOTA: ANTES DE CAPTURAR EN SICOP REVISAR QUE LE HAYAN ASIGNADO CODIGO
@@ -180,10 +199,9 @@
         </tr>
       </tbody>
     </table>
-
   </div>
 
-  <!-- Mensaje si no hay datos -->
+  <!-- Estado vacío -->
   <ion-card *ngIf="Global.length === 0">
     <ion-card-content class="ion-text-center">
       <p>No hay reportes disponibles</p>

@@ -1,0 +1,25 @@
+--- INICIANDO DIAGNÓSTICO ---
+
+📍 POSICIÓN 1:
+   [M1 - Clipboard]: VACÍO
+   [M2 - Win Title]: 4mYaHHSktW5igUO5zi6FEYU6.xlsm - Excel
+   [M3 - Excel Cap]: 4mYaHHSktW5igUO5zi6FEYU6.xlsm - Excel
+   [M4 - Shapes   ]: AGENCIA | VENDEDOR | GERENTE | TODOS (TRAD/TUA/EMP | TRAD Y TUA | EMPLEADO | MES ACTUAL | MES + MAD. | PROCESO | DESEMPEÑO | 🆕 & ♻️ | FLOTILA | TRAD & TUA | EMPLEADO | TRAD & TUA | EMPLEADO | TRAD & TUA | EMPLEADO
+
+📍 POSICIÓN 2:
+   [M1 - Clipboard]: VACÍO
+   [M2 - Win Title]: 
+   [M3 - Excel Cap]: ERROR
+   [M4 - Shapes   ]: ERROR
+
+📍 POSICIÓN 3:
+   [M1 - Clipboard]: VACÍO
+   [M2 - Win Title]: 4mYaHHSktW5igUO5zi6FEYU6.xlsm - Excel
+   [M3 - Excel Cap]: 4mYaHHSktW5igUO5zi6FEYU6.xlsm - Excel
+   [M4 - Shapes   ]: AGENCIA | VENDEDOR | GERENTE | TODOS (TRAD/TUA/EMP | TRAD Y TUA | EMPLEADO | MES ACTUAL | MES + MAD. | PROCESO | DESEMPEÑO | 🆕 & ♻️ | FLOTILA | TRAD & TUA | EMPLEADO | TRAD & TUA | EMPLEADO | TRAD & TUA | EMPLEADO
+
+📍 POSICIÓN 4:
+   [M1 - Clipboard]: VACÍO
+   [M2 - Win Title]: reporte_nissan.py - NTCEstadias - Visual Studio Code
+   [M3 - Excel Cap]: ERROR
+   [M4 - Shapes   ]: ERROR

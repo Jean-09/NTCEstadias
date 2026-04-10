@@ -1,18 +1,139 @@
 <ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>dashboard</ion-title>
+  <ion-toolbar class="toolbar-nissan">
+    <div class="header-container">
+      <img src="assets/nissan.png" class="logo" />
+      <div>
+        <ion-title>Dashboard</ion-title>
+        <span class="subtitle">Grupo Torres Corzo</span>
+      </div>
+    </div>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-button (click)="globalSucursales('Zacatecas')" expand="block" fill="clear" shape="round">
-    Reporte Zacatecas
-  </ion-button>
-  <ion-button (click)="globalSucursales('Bicentenario')" expand="block" fill="clear" shape="round">
-    Reporte Bicentenario
-  </ion-button>
-  <ion-button (click)="apv()" expand="block" fill="clear" shape="round">
-    Reporte apv
-  </ion-button>
+<ion-content class="content-nissan">
+
+   <!-- CRUD -->
+  <ion-accordion-group>
+    <ion-accordion value="crud">
+
+      <ion-item slot="header">
+        <ion-icon name="settings-outline" slot="start"></ion-icon>
+        <ion-label>Administrar Sucursales</ion-label>
+      </ion-item>
+
+      <div class="admin-container" slot="content">
+
+        <!-- FORM -->
+        <div class="card-section">
+
+          <h2 style="color: white;">Crear / Editar</h2>
+
+          <ion-item>
+            <ion-icon name="business-outline" slot="start"></ion-icon>
+            <ion-label position="stacked">Sucursal</ion-label>
+            <ion-input [(ngModel)]="formSucursal.Sucursal"></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-icon name="document-text-outline" slot="start"></ion-icon>
+            <ion-label position="stacked">Plantilla XML</ion-label>
+            <ion-input [(ngModel)]="formSucursal.Plantilla"></ion-input>
+          </ion-item>
+
+          <!-- 🔥 INPUT REAL -->
+          <ion-item>
+            <ion-icon name="calculator-outline" slot="start"></ion-icon>
+            <ion-label position="stacked">Número APV</ion-label>
+            <ion-input type="number" [(ngModel)]="formSucursal.numero_apv"></ion-input>
+          </ion-item>
+
+          <ion-button expand="block" class="btn-card red" (click)="guardarSucursal()">
+            <ion-icon name="save-outline" slot="start"></ion-icon>
+            Guardar
+          </ion-button>
+
+          <ion-button expand="block" class="btn-card outline" (click)="resetForm()">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Limpiar
+          </ion-button>
+
+        </div>
+
+        <!-- LISTA -->
+     <div class="card-section">
+
+  <h2 style="color: white;">Lista de Sucursales</h2>
+
+  <!-- 🔥 CONTENEDOR SOLO PARA LA LISTA -->
+  <div class="lista-scroll">
+
+    <div *ngFor="let s of sucursales" class="row-item">
+
+      <div class="info">
+        <strong>
+          <ion-icon name="business-outline"></ion-icon>
+          {{s.Sucursal}}
+        </strong>
+
+        <div class="meta">
+          <ion-icon name="document-outline"></ion-icon>
+          {{s.Plantilla}}
+        </div>
+
+        <div class="meta">
+          <ion-icon name="stats-chart-outline"></ion-icon>
+          APV: {{s.numero_apv?.Num_apv}}
+        </div>
+      </div>
+
+      <div class="actions">
+        <ion-button size="small" color="primary" (click)="editarSucursal(s)">
+          <ion-icon name="create-outline" slot="start"></ion-icon>
+          Editar
+        </ion-button>
+
+        <ion-button size="small" color="danger" (click)="eliminarSucursal(s.documentId)">
+          <ion-icon name="trash-outline" slot="start"></ion-icon>
+          Eliminar
+        </ion-button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+      </div>
+
+    </ion-accordion>
+  </ion-accordion-group>
+
+  <!-- DASHBOARD -->
+  <div class="grid-dashboard">
+
+    <div class="card-section">
+      <h2 style="color: white;">Global</h2>
+      <ion-button *ngFor="let s of sucursales" (click)="globalSucursales(s.documentId)" class="btn-card red">
+        {{s.Sucursal}}
+      </ion-button>
+    </div>
+
+    <div class="card-section">
+      <h2 style="color: white;">Por Gerente</h2>
+      <ion-button *ngFor="let s of sucursales" (click)="globalSucursalesGerente(s.documentId)" class="btn-card outline">
+        {{s.Sucursal}}
+      </ion-button>
+    </div>
+
+    <div class="card-section">
+      <h2 style="color: white;">APV</h2>
+      <ion-button *ngFor="let s of sucursales" (click)="apvSucursales(s.documentId)" class="btn-card dark">
+        {{s.Sucursal}}
+      </ion-button>
+    </div>
+
+  </div>
+
+ 
 
 </ion-content>

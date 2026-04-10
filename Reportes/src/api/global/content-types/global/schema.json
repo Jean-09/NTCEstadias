@@ -53,12 +53,14 @@
     "fecha": {
       "type": "date"
     },
-    "Sucursal": {
-      "type": "enumeration",
-      "enum": [
-        "Zacatecas",
-        "Bicentenario"
-      ]
+    "Gerente": {
+      "type": "string"
+    },
+    "sucursal": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sucursal.sucursal",
+      "inversedBy": "globals"
     },
     "tipo": {
       "type": "enumeration",
@@ -67,8 +69,8 @@
         "Gerente"
       ]
     },
-    "Gerente": {
-      "type": "string"
+    "num_apv_gerente": {
+      "type": "integer"
     }
   }
 }

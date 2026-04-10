@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-apv',
@@ -13,7 +14,10 @@ export class APVPage implements OnInit {
 
   paginas: any = {};
   gerenteSeleccionado: string = '';
+  diaLimite = '';
+  id: string = '';
   Object = Object;
+  sucursal: any[] = [];
 
   apvData: any[] = [];
   conceptos = [
@@ -26,15 +30,39 @@ export class APVPage implements OnInit {
     { nombre: 'DESEMBOLSADAS', key: 'desenbolsadas' },
     { nombre: 'ENTREGAS', key: 'entregas' }
   ];
-  constructor(private api: ExcelService) { }
+  constructor(private api: ExcelService, private act: ActivatedRoute) {
+    this.id = this.act.snapshot.paramMap.get('sucursal') as string;
+  }
 
   async ngOnInit() {
+    await this.getSucursal();
     await this.getApv();
+  }
+
+     async getSucursal() {
+    try {
+      const res = await this.api.getBySucursales(this.id);
+      this.sucursal = res.data[0].Sucursal;
+      console.log('Sucursal obtenida:', this.sucursal);
+    } catch (error) {
+      console.error('Error al obtener sucursal:', error);
+    } }
+
+  async dispararAutomatizacion() {
+    try {
+      const response = await this.api.ExtraerDatosApv(this.diaLimite, this.sucursal);
+      await this.getApv();
+      return response.data;
+
+    } catch (error) {
+      console.error('Error en el servicio Nissan:', error);
+      throw error;
+    }
   }
 
   // Obtiene datos desde API
   getApv() {
-    this.api.getApv().then((res: any) => {
+    this.api.getApv(this.id).then((res: any) => {
       console.log("DATA ORIGINAL:", res.data);
       this.apvData = res.data;
       this.filtrarPorGerente(this.apvData);
@@ -99,7 +127,7 @@ export class APVPage implements OnInit {
   semaforos: any = {};
 
   procesarSemaforos(gerente: string) {
-    this.semaforos = {}; 
+    this.semaforos = {};
     const columnas = this.getColumnas(this.paginas[gerente]);
 
     if (!columnas || columnas.length === 0) return;
@@ -123,21 +151,21 @@ export class APVPage implements OnInit {
       }
     });
   }
-compararBloque(actual: any, anterior: any, id: string, colAct: any, colAnt: any) {
-  const numApv = id.includes('global') ? 22 : 
-                 id.includes('gerente') ? colAct.vendedores.length : 1;
+  compararBloque(actual: any, anterior: any, id: string, colAct: any, colAnt: any) {
+    const numApv = id.includes('global') ? 22 :
+      id.includes('gerente') ? colAct.vendedores.length : 1;
 
-  this.conceptos.forEach((c: any, index: number) => {
-    const valAct = Math.trunc(this.getPorcentaje(actual?.Mes?.[c.key], index, colAct, numApv));
-    const valAnt = Math.trunc(parseFloat(this.getPorcentaje(anterior?.Mes?.[c.key], index, colAnt, numApv).toString()) || 0);
-    
-    const valMadAct = Math.trunc(parseFloat(this.getPorcentaje(actual?.Maduracion?.[c.key], index, colAct, numApv).toString()) || 0);
-    const valMadAnt = Math.trunc(parseFloat(this.getPorcentaje(anterior?.Maduracion?.[c.key], index, colAnt, numApv).toString()) || 0);
+    this.conceptos.forEach((c: any, index: number) => {
+      const valAct = Math.trunc(this.getPorcentaje(actual?.Mes?.[c.key], index, colAct, numApv));
+      const valAnt = Math.trunc(parseFloat(this.getPorcentaje(anterior?.Mes?.[c.key], index, colAnt, numApv).toString()) || 0);
 
-    this.semaforos[`${id}-${c.key}-mes`] = this.calcularColor(valAct, valAnt);
-    this.semaforos[`${id}-${c.key}-mad`] = this.calcularColor(valMadAct, valMadAnt);
-  });
-}
+      const valMadAct = Math.trunc(parseFloat(this.getPorcentaje(actual?.Maduracion?.[c.key], index, colAct, numApv).toString()) || 0);
+      const valMadAnt = Math.trunc(parseFloat(this.getPorcentaje(anterior?.Maduracion?.[c.key], index, colAnt, numApv).toString()) || 0);
+
+      this.semaforos[`${id}-${c.key}-mes`] = this.calcularColor(valAct, valAnt);
+      this.semaforos[`${id}-${c.key}-mad`] = this.calcularColor(valMadAct, valMadAnt);
+    });
+  }
   calcularColor(act: number, ant: number): any {
     if (act > ant) {
       return { 'background-color': '#d4edda', 'color': '#155724', 'font-weight': 'bold' };
@@ -199,35 +227,35 @@ compararBloque(actual: any, anterior: any, id: string, colAct: any, colAnt: any)
     }
   }
 
-// Calcula días laborables descontando domingos y feriados oficiales de México 2026
-calcularDiasHabiles(inicio: string, fin: string): number {
-  let count = 0;
-  let fecha = new Date(inicio.replace(/-/g, '\/'));
-  const finDate = new Date(fin.replace(/-/g, '\/'));
+  // Calcula días laborables descontando domingos y feriados oficiales de México 2026
+  calcularDiasHabiles(inicio: string, fin: string): number {
+    let count = 0;
+    let fecha = new Date(inicio.replace(/-/g, '\/'));
+    const finDate = new Date(fin.replace(/-/g, '\/'));
 
-  const festivos2026 = [
-    '01-01', // Año Nuevo
-    '02-02', // Constitución (5 Feb)
-    '03-16', // Natalicio Juárez (21 Mar)
-    '04-02', // Jueves Santo (Opcional)
-    '04-03', // Viernes Santo (Opcional)
-    '04-04', // Sabado Santo (Opcional)
-    '05-01', // Día del Trabajo
-    '09-16', // Independencia
-    '11-16', // Revolución (20 Nov)
-    '12-25'  // Navidad
-  ];
+    const festivos2026 = [
+      '01-01', // Año Nuevo
+      '02-02', // Constitución (5 Feb)
+      '03-16', // Natalicio Juárez (21 Mar)
+      '04-02', // Jueves Santo 
+      '04-03', // Viernes Santo
+      '04-04', // Sabado Santo
+      '05-01', // Día del Trabajo
+      '09-16', // Independencia
+      '11-16', // Revolución (20 Nov)
+      '12-25'  // Navidad
+    ];
 
-  while (fecha <= finDate) {
-    const mesDia = `${(fecha.getMonth() + 1).toString().padStart(2, '0')}-${fecha.getDate().toString().padStart(2, '0')}`;
-    
-    if (fecha.getDay() !== 0 && !festivos2026.includes(mesDia)) {
-      count++;
+    while (fecha <= finDate) {
+      const mesDia = `${(fecha.getMonth() + 1).toString().padStart(2, '0')}-${fecha.getDate().toString().padStart(2, '0')}`;
+
+      if (fecha.getDay() !== 0 && !festivos2026.includes(mesDia)) {
+        count++;
+      }
+      fecha.setDate(fecha.getDate() + 1);
     }
-    fecha.setDate(fecha.getDate() + 1);
+    return count;
   }
-  return count;
-}
 
   // Cambia tu getObjMes actual por este:
   getObjMes(i: number, numApv: number): number {
@@ -313,126 +341,126 @@ calcularDiasHabiles(inicio: string, fin: string): number {
     this.procesarSemaforos(this.gerenteSeleccionado);
   }
 
-async exportarExcel() {
-  const workbook = new ExcelJS.Workbook();
+  async exportarExcel() {
+    const workbook = new ExcelJS.Workbook();
 
-  for (const nombreGerente of Object.keys(this.paginas)) {
-    // Recalcular semáforos para el gerente actual de la iteración
-    this.procesarSemaforos(nombreGerente);
+    for (const nombreGerente of Object.keys(this.paginas)) {
+      // Recalcular semáforos para el gerente actual de la iteración
+      this.procesarSemaforos(nombreGerente);
 
-    const sheet = workbook.addWorksheet(nombreGerente.substring(0, 31));
-    const columnas = this.getColumnas(this.paginas[nombreGerente]);
-    const borderStyle: Partial<ExcelJS.Borders> = {
-      top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
-    };
-
-    sheet.getColumn(1).width = 35;
-
-    columnas.forEach((col, iCol) => {
-      const tieneD = iCol > 0;
-      const anchoBloque = tieneD ? 7 : 6;
-      const colInicioNum = 2 + (iCol * 8);
-
-      // Cabeceras de fecha
-      let fActual = 1;
-      const celdaDia = sheet.getCell(fActual, colInicioNum);
-      celdaDia.value = `DIA HÁBIL: ${this.calcularDiasHabiles(col.fechaInicio, col.fechaFin)}`;
-      celdaDia.font = { bold: true };
-      celdaDia.alignment = { horizontal: 'center' };
-      sheet.mergeCells(fActual, colInicioNum, fActual, colInicioNum + (anchoBloque - 1));
-
-      fActual++;
-      const celdaRango = sheet.getCell(fActual, colInicioNum);
-      celdaRango.value = `INI: ${col.fechaInicio} | FIN: ${col.fechaFin}`;
-      celdaRango.font = { size: 9 };
-      celdaRango.alignment = { horizontal: 'center' };
-      sheet.mergeCells(fActual, colInicioNum, fActual, colInicioNum + (anchoBloque - 1));
-
-      // Resetear fila para empezar las tablas de este bloque de fechas
-      let filaDeTablas = 5;
-
-      const dibujarTabla = (dataItem: any, titulo: string, idPrefix: string, iV?: number) => {
-        // Título de la sección
-        sheet.getCell(filaDeTablas, 1).value = titulo;
-        sheet.getCell(filaDeTablas, 1).font = { bold: true };
-
-        // Definir multiplicador de objetivos según el nivel
-        const numCalculo = idPrefix === 'global' ? 22 : 
-                           idPrefix === 'gerente' ? col.vendedores.length : 1;
-
-        const headers = ['OBJ MES', 'OBJ DIA', 'MES TOT', 'MES %', 'MAD TOT', 'MAD %'];
-        if (tieneD) headers.push('D');
-
-        headers.forEach((h, idx) => {
-          const cell = sheet.getCell(filaDeTablas, colInicioNum + idx);
-          cell.value = h;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF404040' } };
-          cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
-          cell.alignment = { horizontal: 'center' };
-          cell.border = borderStyle;
-        });
-
-        filaDeTablas++;
-
-        this.conceptos.forEach((c, iConc) => {
-          const r = filaDeTablas + iConc;
-          
-          if (iCol === 0) {
-            sheet.getCell(r, 1).value = c.nombre;
-            sheet.getCell(r, 1).border = borderStyle;
-          }
-
-          // Valores con el nuevo parámetro numCalculo
-          sheet.getCell(r, colInicioNum).value = this.getObjMes(iConc, numCalculo);
-          sheet.getCell(r, colInicioNum + 1).value = this.getObjDia(iConc, col, numCalculo);
-          sheet.getCell(r, colInicioNum + 2).value = dataItem?.Mes?.[c.key] || 0;
-
-          // Porcentaje MES con semáforo
-          const pctMes = this.getPorcentaje(dataItem?.Mes?.[c.key], iConc, col, numCalculo);
-          const cPctMes = sheet.getCell(r, colInicioNum + 3);
-          cPctMes.value = pctMes / 100;
-          cPctMes.numFmt = '0%';
-          this.aplicarColorExcel(cPctMes, idPrefix, iCol, c.key, 'mes', iV);
-
-          sheet.getCell(r, colInicioNum + 4).value = dataItem?.Maduracion?.[c.key] || 0;
-
-          // Porcentaje MAD con semáforo
-          const pctMad = this.getPorcentaje(dataItem?.Maduracion?.[c.key], iConc, col, numCalculo);
-          const cPctMad = sheet.getCell(r, colInicioNum + 5);
-          cPctMad.value = pctMad / 100;
-          cPctMad.numFmt = '0%';
-          this.aplicarColorExcel(cPctMad, idPrefix, iCol, c.key, 'mad', iV);
-
-          if (tieneD) {
-            sheet.getCell(r, colInicioNum + 6).value = this.getConversionD(iConc, dataItem);
-          }
-
-          // Bordes y alineación
-          for (let k = 0; k < anchoBloque; k++) {
-            sheet.getCell(r, colInicioNum + k).border = borderStyle;
-            sheet.getCell(r, colInicioNum + k).alignment = { horizontal: 'center' };
-          }
-        });
-
-        // Espacio para la siguiente tabla (Global -> Gerente -> Vendedor)
-        filaDeTablas += this.conceptos.length + 2;
+      const sheet = workbook.addWorksheet(nombreGerente.substring(0, 31));
+      const columnas = this.getColumnas(this.paginas[nombreGerente]);
+      const borderStyle: Partial<ExcelJS.Borders> = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
       };
 
-      // Ejecutar el dibujo de tablas para cada nivel
-      dibujarTabla(col.global, 'GLOBAL', 'global');
-      dibujarTabla(col.gerente, nombreGerente, 'gerente');
-      col.vendedores.forEach((v: any, iV: number) => {
-        dibujarTabla(v, v.Apv_nombre, 'vendedor', iV);
+      sheet.getColumn(1).width = 35;
+
+      columnas.forEach((col, iCol) => {
+        const tieneD = iCol > 0;
+        const anchoBloque = tieneD ? 7 : 6;
+        const colInicioNum = 2 + (iCol * 8);
+
+        // Cabeceras de fecha
+        let fActual = 1;
+        const celdaDia = sheet.getCell(fActual, colInicioNum);
+        celdaDia.value = `DIA HÁBIL: ${this.calcularDiasHabiles(col.fechaInicio, col.fechaFin)}`;
+        celdaDia.font = { bold: true };
+        celdaDia.alignment = { horizontal: 'center' };
+        sheet.mergeCells(fActual, colInicioNum, fActual, colInicioNum + (anchoBloque - 1));
+
+        fActual++;
+        const celdaRango = sheet.getCell(fActual, colInicioNum);
+        celdaRango.value = `INI: ${col.fechaInicio} | FIN: ${col.fechaFin}`;
+        celdaRango.font = { size: 9 };
+        celdaRango.alignment = { horizontal: 'center' };
+        sheet.mergeCells(fActual, colInicioNum, fActual, colInicioNum + (anchoBloque - 1));
+
+        // Resetear fila para empezar las tablas de este bloque de fechas
+        let filaDeTablas = 5;
+
+        const dibujarTabla = (dataItem: any, titulo: string, idPrefix: string, iV?: number) => {
+          // Título de la sección
+          sheet.getCell(filaDeTablas, 1).value = titulo;
+          sheet.getCell(filaDeTablas, 1).font = { bold: true };
+
+          // Definir multiplicador de objetivos según el nivel
+          const numCalculo = idPrefix === 'global' ? 22 :
+            idPrefix === 'gerente' ? col.vendedores.length : 1;
+
+          const headers = ['OBJ MES', 'OBJ DIA', 'MES TOT', 'MES %', 'MAD TOT', 'MAD %'];
+          if (tieneD) headers.push('D');
+
+          headers.forEach((h, idx) => {
+            const cell = sheet.getCell(filaDeTablas, colInicioNum + idx);
+            cell.value = h;
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF404040' } };
+            cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
+            cell.alignment = { horizontal: 'center' };
+            cell.border = borderStyle;
+          });
+
+          filaDeTablas++;
+
+          this.conceptos.forEach((c, iConc) => {
+            const r = filaDeTablas + iConc;
+
+            if (iCol === 0) {
+              sheet.getCell(r, 1).value = c.nombre;
+              sheet.getCell(r, 1).border = borderStyle;
+            }
+
+            // Valores con el nuevo parámetro numCalculo
+            sheet.getCell(r, colInicioNum).value = this.getObjMes(iConc, numCalculo);
+            sheet.getCell(r, colInicioNum + 1).value = this.getObjDia(iConc, col, numCalculo);
+            sheet.getCell(r, colInicioNum + 2).value = dataItem?.Mes?.[c.key] || 0;
+
+            // Porcentaje MES con semáforo
+            const pctMes = this.getPorcentaje(dataItem?.Mes?.[c.key], iConc, col, numCalculo);
+            const cPctMes = sheet.getCell(r, colInicioNum + 3);
+            cPctMes.value = pctMes / 100;
+            cPctMes.numFmt = '0%';
+            this.aplicarColorExcel(cPctMes, idPrefix, iCol, c.key, 'mes', iV);
+
+            sheet.getCell(r, colInicioNum + 4).value = dataItem?.Maduracion?.[c.key] || 0;
+
+            // Porcentaje MAD con semáforo
+            const pctMad = this.getPorcentaje(dataItem?.Maduracion?.[c.key], iConc, col, numCalculo);
+            const cPctMad = sheet.getCell(r, colInicioNum + 5);
+            cPctMad.value = pctMad / 100;
+            cPctMad.numFmt = '0%';
+            this.aplicarColorExcel(cPctMad, idPrefix, iCol, c.key, 'mad', iV);
+
+            if (tieneD) {
+              sheet.getCell(r, colInicioNum + 6).value = this.getConversionD(iConc, dataItem);
+            }
+
+            // Bordes y alineación
+            for (let k = 0; k < anchoBloque; k++) {
+              sheet.getCell(r, colInicioNum + k).border = borderStyle;
+              sheet.getCell(r, colInicioNum + k).alignment = { horizontal: 'center' };
+            }
+          });
+
+          // Espacio para la siguiente tabla (Global -> Gerente -> Vendedor)
+          filaDeTablas += this.conceptos.length + 2;
+        };
+
+        // Ejecutar el dibujo de tablas para cada nivel
+        dibujarTabla(col.global, 'GLOBAL', 'global');
+        dibujarTabla(col.gerente, nombreGerente, 'gerente');
+        col.vendedores.forEach((v: any, iV: number) => {
+          dibujarTabla(v, v.Apv_nombre, 'vendedor', iV);
+        });
       });
-    });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Reporte_APV_${new Date().getTime()}.xlsx`);
+
+    // Restaurar visualización en la App
+    this.procesarSemaforos(this.gerenteSeleccionado);
   }
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  saveAs(new Blob([buffer]), `Reporte_APV_${new Date().getTime()}.xlsx`);
-
-  // Restaurar visualización en la App
-  this.procesarSemaforos(this.gerenteSeleccionado);
-}
 
   // Función auxiliar para aplicar colores de fondo y fuente basados en el estado
   aplicarColorExcel(celda: any, tipo: string, iCol: number, key: string, campo: string, iV?: number) {

@@ -1,0 +1,210 @@
+.admin-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.card-section {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.card-section h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #1A1A1A;
+  border-left: 5px solid #C3002F;
+  padding-left: 10px;
+}
+
+ion-item {
+  --background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.row-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.actions {
+  display: flex;
+  gap: 5px;
+}
+
+.content-nissan {
+  --background: #1e1e1e;
+  color: #ffffff;
+}
+
+.toolbar-nissan {
+  --background: #c3002f;
+  color: white;
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 40px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #f1f1f1;
+}
+
+/* GRID */
+.grid-dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  padding: 15px;
+}
+
+/* CARDS */
+.card-section {
+  background: #262626;
+  padding: 20px;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* TITULOS */
+h2 {
+  font-size: 18px;
+  margin-bottom: 15px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* INPUTS */
+ion-item {
+  --background: #1f1f1f;
+  --color: #ffffff;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+ion-label {
+  color: #cccccc !important;
+  font-size: 13px;
+}
+
+/* BOTONES */
+.btn-card {
+  margin-top: 10px;
+  height: 45px;
+  font-weight: 600;
+}
+
+.btn-card.red {
+  --background: #d90429;
+}
+
+.btn-card.outline {
+  --border-color: #888;
+  --color: #ddd;
+}
+
+.btn-card.dark {
+  --background: #000;
+  color: white;
+}
+
+/* LISTA */
+.row-item {
+  background: #1f1f1f;
+  padding: 15px;
+  margin-top: 12px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #333;
+  transition: 0.2s;
+}
+
+.row-item:hover {
+  background: #2a2a2a;
+  transform: scale(1.01);
+}
+
+.row-item strong {
+  font-size: 16px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta {
+  font-size: 12px;
+  color: #aaaaaa;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* BOTONES DERECHA */
+.actions ion-button {
+  margin-left: 6px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .grid-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .row-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    margin-top: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+/* 🔥 SOLO LA LISTA TIENE SCROLL */
+.lista-scroll {
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 6px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Scroll bonito */
+.lista-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lista-scroll::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.lista-scroll::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

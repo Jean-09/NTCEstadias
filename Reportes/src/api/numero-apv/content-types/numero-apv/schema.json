@@ -14,12 +14,11 @@
     "Num_apv": {
       "type": "integer"
     },
-    "Sucursal": {
-      "type": "enumeration",
-      "enum": [
-        "Bicentenario",
-        "Zacatecas"
-      ]
+    "sucursal": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sucursal.sucursal",
+      "inversedBy": "numero_apv"
     }
   }
 }

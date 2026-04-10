@@ -37,12 +37,11 @@
     "Maduracion": {
       "type": "json"
     },
-    "Agencia": {
-      "type": "enumeration",
-      "enum": [
-        "Bicentenario",
-        "Zacatecas"
-      ]
+    "sucursal": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sucursal.sucursal",
+      "inversedBy": "apvs"
     }
   }
 }

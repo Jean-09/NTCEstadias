@@ -441,7 +441,6 @@ export interface ApiApvApv extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-    Agencia: Schema.Attribute.Enumeration<['Bicentenario', 'Zacatecas']>;
     Apv_nombre: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -455,36 +454,10 @@ export interface ApiApvApv extends Struct.CollectionTypeSchema {
     Maduracion: Schema.Attribute.JSON;
     Mes: Schema.Attribute.JSON;
     publishedAt: Schema.Attribute.DateTime;
+    sucursal: Schema.Attribute.Relation<'manyToOne', 'api::sucursal.sucursal'>;
     tipo_registro: Schema.Attribute.Enumeration<
       ['GLOBAL', 'GERENTE', 'VENDEDOR']
     >;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
-export interface ApiGerenteGerente extends Struct.CollectionTypeSchema {
-  collectionName: 'gerentes';
-  info: {
-    displayName: 'Gerente';
-    pluralName: 'gerentes';
-    singularName: 'gerente';
-  };
-  options: {
-    draftAndPublish: true;
-  };
-  attributes: {
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::gerente.gerente'
-    > &
-      Schema.Attribute.Private;
-    publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -521,12 +494,13 @@ export interface ApiGlobalGlobal extends Struct.CollectionTypeSchema {
       'api::global.global'
     > &
       Schema.Attribute.Private;
+    num_apv_gerente: Schema.Attribute.Integer;
     pedidosConAnticipo: Schema.Attribute.Integer;
     preContactos: Schema.Attribute.Integer;
     prospectos: Schema.Attribute.Integer;
     publishedAt: Schema.Attribute.DateTime;
     solCDatosCompletos: Schema.Attribute.Integer;
-    Sucursal: Schema.Attribute.Enumeration<['Zacatecas', 'Bicentenario']>;
+    sucursal: Schema.Attribute.Relation<'manyToOne', 'api::sucursal.sucursal'>;
     tipo: Schema.Attribute.Enumeration<['Global', 'Gerente']>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -557,7 +531,42 @@ export interface ApiNumeroApvNumeroApv extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Num_apv: Schema.Attribute.Integer;
     publishedAt: Schema.Attribute.DateTime;
-    Sucursal: Schema.Attribute.Enumeration<['Bicentenario', 'Zacatecas']>;
+    sucursal: Schema.Attribute.Relation<'oneToOne', 'api::sucursal.sucursal'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSucursalSucursal extends Struct.CollectionTypeSchema {
+  collectionName: 'sucursals';
+  info: {
+    displayName: 'Sucursal';
+    pluralName: 'sucursals';
+    singularName: 'sucursal';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    apvs: Schema.Attribute.Relation<'oneToMany', 'api::apv.apv'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    globals: Schema.Attribute.Relation<'oneToMany', 'api::global.global'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sucursal.sucursal'
+    > &
+      Schema.Attribute.Private;
+    numero_apv: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::numero-apv.numero-apv'
+    >;
+    Plantilla: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    Sucursal: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1076,9 +1085,9 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::apv.apv': ApiApvApv;
-      'api::gerente.gerente': ApiGerenteGerente;
       'api::global.global': ApiGlobalGlobal;
       'api::numero-apv.numero-apv': ApiNumeroApvNumeroApv;
+      'api::sucursal.sucursal': ApiSucursalSucursal;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

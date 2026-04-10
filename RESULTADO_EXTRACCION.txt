@@ -1,0 +1,2 @@
+[20:55:16] === INICIO DE TEST DE EXTRACCIÓN ===
+[20:55:16] ❌ No se encontró la plantilla en Descargas.

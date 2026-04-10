@@ -4,21 +4,21 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
 
+
 @Component({
-  selector: 'app-global-sucursal',
-  templateUrl: './global-sucursal.page.html',
-  styleUrls: ['./global-sucursal.page.scss'],
-  standalone: false,
+  selector: 'app-global-gerente',
+  templateUrl: './global-gerente.page.html',
+  styleUrls: ['./global-gerente.page.scss'],
+  standalone: false
 })
 
-export class GlobalSucursalPage implements OnInit {
+export class GlobalGerentePage implements OnInit {
   diasHabiles = 26; // Celda A3
   numAPV = 22;      // Celda B3
   diaActual = 2;    // Usado para cálculos de columna H
   reportesPorMes: any = {};
   mesActual: string = '';
   id: string = '';
-  sucursal: any[] = [];
 
 
 
@@ -32,16 +32,6 @@ export class GlobalSucursalPage implements OnInit {
     await this.getGlobal();
     this.actualizarSemanal();
     this.agruparPorMes();
-  }
-
-  async getSucursal() {
-    try {
-      const res = await this.api.getBySucursales(this.id);
-      this.sucursal = res.data[0].Sucursal;
-      console.log('Sucursal obtenida:', this.sucursal);
-    } catch (error) {
-      console.error('Error al obtener sucursal:', error);
-    }
   }
 
   async getapv() {
@@ -70,9 +60,22 @@ export class GlobalSucursalPage implements OnInit {
 
   diaLimite = '';
 
+  sucursal: any = {};
+
+  async getSucursal() {
+    try {
+      const res = await this.api.getBySucursales(this.id);
+      this.sucursal = res.data[0];
+      console.log('Sucursal obtenida:', this.sucursal);
+    } catch (error) {
+      console.error('Error al obtener sucursal:', error);
+    }
+  }
+
   async dispararAutomatizacion() {
     try {
-      const response = await this.api.diaLimite(this.diaLimite, this.sucursal);
+      console.log(this.sucursal)
+      const response = await this.api.ExtraerDatosGerente(this.diaLimite, this.sucursal.Sucursal);
       await this.getGlobal();
       return response.data;
 
@@ -99,7 +102,6 @@ export class GlobalSucursalPage implements OnInit {
         this.reportesPorMes[claveMes] = [];
       }
 
-      console.log(`Agrupando reporte con fecha ${r.fecha} bajo la clave ${claveMes}`);
 
       this.reportesPorMes[claveMes].push(r);
     }
@@ -137,7 +139,7 @@ export class GlobalSucursalPage implements OnInit {
       // TÍTULO (Fila 1)
       worksheet.mergeCells('A1:M1');
       const titulo = worksheet.getCell('A1');
-      titulo.value = `DESEMPEÑO GLOBAL C/ APV Y F & I (${this.sucursal}) ${diaActual}/${mes}/${anio}`;
+      titulo.value = `DESEMPEÑO GLOBAL C/ APV Y F & I (${this.id}) ${diaActual}/${mes}/${anio}`;
       titulo.font = { bold: true, size: 14 };
       titulo.alignment = { horizontal: 'center', vertical: 'middle' };
       titulo.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB3B' } };
@@ -205,7 +207,7 @@ export class GlobalSucursalPage implements OnInit {
     // Generar y guardar archivo
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `Reporte_Global_${this.sucursal}.xlsx`);
+    saveAs(blob, `Reporte_Global_${this.id}.xlsx`);
   }
 
   getBorder(): Partial<ExcelJS.Borders> {
@@ -249,43 +251,110 @@ export class GlobalSucursalPage implements OnInit {
 
   Global: any[] = [];
 
-  async getGlobal() {
-    try {
+  // Variables para el control de la vista
+  reportesPorGerente: any = {};
+  gerentesLista: string[] = [];
+  gerenteSeleccionado: string = '';
+async getGlobal() {
+  try {
+    const res = await this.api.getDataGlobalGerente(this.id);
+    const datos = res.data.data;
+    console.log('Datos Global Gerente:', datos);
 
-      const res = await this.api.getDataGlobal(this.id);
-      const datos = res.data.data;
-      console.log("Datos obtenidos de Strapi:", datos);
-      let datosProcesados = datos.map((registro: any) => {
-        if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
+    this.reportesPorGerente = {};
 
-        const partes = registro.fecha.split('-');
-        const fechaActual = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    // 🔥 👉 AGREGAR ESTO (CLAVE)
+    const datosProcesados = datos.map((registro: any) => {
+      if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
 
-        let contadorHabilesInMes = 0;
-        let fechaAux = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+      const partes = registro.fecha.split('-');
+      const fechaActual = new Date(
+        parseInt(partes[0]),
+        parseInt(partes[1]) - 1,
+        parseInt(partes[2])
+      );
 
-        while (fechaAux <= fechaActual) {
-          if (!this.esDiaInhabilMexico(fechaAux)) contadorHabilesInMes++;
-          fechaAux.setDate(fechaAux.getDate() + 1);
-        }
+      let contadorHabilesInMes = 0;
+      let fechaAux = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
 
-        return { ...registro, DIA_HABIL: contadorHabilesInMes };
-      });
-
-      // 2. ORDENAR POR FECHA
-      this.Global = datosProcesados.sort((a: any, b: any) => {
-        return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
-      });
-
-      if (this.Global.length > 0) {
-        this.diaActual = this.Global[this.Global.length - 1].DIA_HABIL;
-        // Llamamos después de ordenar
-        this.agruparPorMes();
+      while (fechaAux <= fechaActual) {
+        if (!this.esDiaInhabilMexico(fechaAux)) contadorHabilesInMes++;
+        fechaAux.setDate(fechaAux.getDate() + 1);
       }
 
-    } catch (error) {
-      console.error("Error al obtener datos:", error);
+      return { ...registro, DIA_HABIL: contadorHabilesInMes };
+    });
+
+    // 🔥 USA LOS PROCESADOS, NO LOS ORIGINALES
+    datosProcesados.sort((a: any, b: any) =>
+      new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+    );
+
+    datosProcesados.forEach((r: any) => {
+      const nombreG = r.Gerente || 'Sin Asignar';
+      if (!this.reportesPorGerente[nombreG]) this.reportesPorGerente[nombreG] = {};
+
+      const fechaPartes = r.fecha.split('-');
+      const mesClave = `${fechaPartes[0]}-${fechaPartes[1].replace(/^0/, '')}`;
+
+      if (!this.reportesPorGerente[nombreG][mesClave]) {
+        this.reportesPorGerente[nombreG][mesClave] = [];
+      }
+
+      this.reportesPorGerente[nombreG][mesClave].push(r);
+    });
+
+    this.gerentesLista = Object.keys(this.reportesPorGerente);
+    console.log('Gerentes encontrados:', this.gerentesLista);
+
+    if (this.gerentesLista.length > 0) {
+      this.gerenteSeleccionado = this.gerentesLista[0];
+      this.actualizarMeses();
     }
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+  actualizarMeses() {
+    const meses = Object.keys(this.reportesPorGerente[this.gerenteSeleccionado]);
+    this.mesActual = meses.length > 0 ? meses[0] : '';
+    this.actualizarVistaPrevia();
+  }
+
+  // NUEVA FUNCIÓN: Para que la tabla se actualice al filtrar
+  actualizarVistaPrevia() {
+    if (this.gerenteSeleccionado && this.mesActual) {
+      this.Global = this.reportesPorGerente[this.gerenteSeleccionado][this.mesActual];
+      this.paginaActual = 0;
+      this.historico.clear();
+    }
+  }
+
+  // NUEVA FUNCIÓN: Exportación masiva por Gerente
+  async exportarTodosLosGerentes() {
+    const backupGlobal = [...this.Global];
+
+    for (const gerente of this.gerentesLista) {
+      const reportesDelGerente: any[] = [];
+
+      Object.keys(this.reportesPorGerente[gerente]).forEach(mes => {
+        reportesDelGerente.push(...this.reportesPorGerente[gerente][mes]);
+      });
+
+      this.Global = reportesDelGerente;
+      await this.exportarExcelmes();
+    }
+
+    this.Global = backupGlobal;
+  }
+
+  // NUEVA FUNCIÓN: Exportar solo el mes que se está viendo
+  async exportarMesSeleccionado() {
+    const backupGlobal = [...this.Global];
+    this.Global = this.reportesPorGerente[this.gerenteSeleccionado][this.mesActual];
+    await this.exportarExcelmes();
+    this.Global = backupGlobal;
   }
 
   getRealDelDia(concepto: string, g: any): number {
@@ -419,7 +488,6 @@ export class GlobalSucursalPage implements OnInit {
   }
 
   getPorcentaje(concepto: string, reporteActual: any, mes: number, diaHabil: number): number {
-
     const realAcumulado = this.getCampo9(concepto, reporteActual);
 
     const objAcumulado = this.calcObjAcumAlDia(mes, diaHabil);
@@ -485,12 +553,10 @@ export class GlobalSucursalPage implements OnInit {
 
     const objDiarioReal = this.calcObjDiario(mes);
 
-    // Si obj diario es 0 usar 1
     const objParaCalculo = objDiarioReal === 0 ? 1 : objDiarioReal;
 
-    // Si día hábil es 0 usar 1
     const diaParaCalculo = diaHabil === 0 ? 1 : diaHabil;
-
+    console.log(objParaCalculo, diaParaCalculo);
     return objParaCalculo * diaParaCalculo;
   }
   // filaAnteriorAcum: valor acumulado del día anterior (ACUMUL. REAL DEL DÍA)
@@ -617,16 +683,16 @@ export class GlobalSucursalPage implements OnInit {
   }
 
   paginaActual: number = 1;
-  reportesPorPagina: number = 0;
+  reportesPorPagina: number = 1;
 
 
   get reporteActual() {
-    return this.Global[this.paginaActual];
+    return this.Global[this.paginaActual +1];
   }
 
-get totalPaginas(): number {
-  return this.Global.length > 0 ? this.Global.length - 1 : 0;
-}
+  get totalPaginas(): number {
+    return this.Global.length > 0 ? this.Global.length - 1 : 0;
+  }
 
   paginaAnterior() {
     if (this.paginaActual > 1) {

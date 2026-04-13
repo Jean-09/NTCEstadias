@@ -16,9 +16,12 @@
     },
     "sucursal": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::sucursal.sucursal",
       "inversedBy": "numero_apv"
+    },
+    "gerente": {
+      "type": "string"
     }
   }
 }

@@ -1,95 +1,77 @@
 <ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Reportes Diarios
-    </ion-title>
-    <ion-buttons slot="start">
-      <ion-back-button></ion-back-button>
-    </ion-buttons>
+  <ion-toolbar class="toolbar-nissan">
+    <div class="header-container">
+      <ion-buttons slot="start">
+        <ion-back-button></ion-back-button>
+      </ion-buttons>
+      <img src="assets/nissan.png" class="logo" />
+      <div>
+        <span class="subtitle">Grupo Torres Corzo</span>
+        <ion-title>Reportes Gerentes</ion-title>
+      </div>
+    </div>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <!-- Card de Automatización -->
-  <ion-card>
-    <ion-card-header>
-      <ion-card-title>Generador de Reportes</ion-card-title>
-    </ion-card-header>
-    <ion-card-content>
-      <ion-item>
-        <ion-label position="stacked">Procesar hasta el día:</ion-label>
-        <ion-input type="number" [(ngModel)]="diaLimite" min="1" max="31"></ion-input>
-      </ion-item>
-      <ion-button expand="block" (click)="dispararAutomatizacion()" class="ion-margin-top" color="success">
-        <ion-icon name="play-outline" slot="start"></ion-icon>
-        Lanzar Automatización
-      </ion-button>
-    </ion-card-content>
-  </ion-card>
+<ion-content class="dark-content">
 
-  <!-- Botones de Exportación Reorganizados -->
-  <ion-row class="ion-padding-horizontal">
-    <ion-col size="6">
-      <ion-button expand="block" fill="outline" (click)="exportarExcelmes()">
-        <ion-icon name="download-outline" slot="start"></ion-icon>
-        Excel Actual
-      </ion-button>
-    </ion-col>
-    <ion-col size="6">
-      <ion-button expand="block" color="tertiary" (click)="exportarTodosLosGerentes()">
-        <ion-icon name="copy-outline" slot="start"></ion-icon>
-        Todo x Gerente
-      </ion-button>
-    </ion-col>
-  </ion-row>
+  <div class="modern-card">
+    <div class="card-header">
+      <h3><ion-icon name="cloud-upload-outline"></ion-icon> Generador de Reportes</h3>
+      <p>Configura el corte de información para procesar los indicadores.</p>
+    </div>
 
-  <!-- Controles de paginación y filtros -->
-  <ion-card *ngIf="Global.length > 0">
-    <ion-card-content>
-      <div class="pagination-controls"
-        style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-        <ion-button size="small" fill="clear" (click)="irAPrimera()" [disabled]="paginaActual <= 1">
-          <ion-icon name="play-back-outline"></ion-icon>
-        </ion-button>
+    <ion-item class="modern-input">
+      <ion-label position="stacked">Procesar hasta el día (1-31):</ion-label>
+      <ion-input type="number" [(ngModel)]="diaLimite" placeholder="Ej: 31"></ion-input>
+    </ion-item>
 
-        <ion-button size="small" fill="clear" (click)="paginaAnterior()" [disabled]="paginaActual <= 1">
-          <ion-icon name="chevron-back-outline"></ion-icon>
-        </ion-button>
+    <ion-button expand="block" class="btn-nissan-red" (click)="dispararAutomatizacion()">
+      <ion-icon name="play-circle-outline" slot="start"></ion-icon>
+      Lanzar Automatización
+    </ion-button>
+  </div>
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button color="danger" (click)="exportarExcelmes()">
+      <ion-icon name="person-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+  <div class="modern-card" *ngIf="Global.length > 0">
+    <div class="card-header">
+      <h3><ion-icon name="filter-outline"></ion-icon> Filtros</h3>
+    </div>
 
-        <span class="pagination-info" *ngIf="reporteActual"
-          style="font-size: 0.9em; font-weight: bold; margin: 0 10px;">
-          Reporte {{ paginaActual }} de {{ totalPaginas }} -
-          {{ reporteActual.fecha | date:'dd/MM/yyyy' }}
-        </span>
-
-        <ion-button size="small" fill="clear" (click)="paginaSiguiente()" [disabled]="paginaActual >= Global.length">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
-        </ion-button>
-
-        <ion-button size="small" fill="clear" (click)="irAUltima()" [disabled]="paginaActual >= Global.length">
-          <ion-icon name="play-forward-outline"></ion-icon>
-        </ion-button>
+    <div class="pagination-section">
+      <div class="nav-controls">
+        <ion-button fill="outline" color="primary" (click)="irAPrimera()" [disabled]="paginaActual <= 0"><ion-icon
+            name="play-back"></ion-icon></ion-button>
+        <ion-button fill="outline" color="primary" (click)="paginaAnterior()" [disabled]="paginaActual <= 0"><ion-icon
+            name="chevron-back"></ion-icon></ion-button>
+        <span class="page-indicator">{{paginaActual}} / {{totalPaginas}} - {{ reporteActual.fecha | date:'dd/MM/yyyy'
+          }}</span>
+        <ion-button fill="outline" color="primary" (click)="paginaSiguiente()"
+          [disabled]="paginaActual >= Global.length - 1"><ion-icon name="chevron-forward"></ion-icon></ion-button>
+        <ion-button fill="outline" color="primary" (click)="irAUltima()"
+          [disabled]="paginaActual >= Global.length - 1"><ion-icon name="play-forward"></ion-icon></ion-button>
       </div>
+    </div>
 
-      <!-- FILTRO DE GERENTE -->
-      <ion-item>
-        <ion-label>Gerente</ion-label>
-        <ion-select [(ngModel)]="gerenteSeleccionado" (ionChange)="actualizarMeses()">
-          <ion-select-option *ngFor="let g of gerentesLista" [value]="g">{{ g }}</ion-select-option>
-        </ion-select>
-      </ion-item>
+    <ion-item class="modern-input">
+      <ion-label>Gerente</ion-label>
+      <ion-select [(ngModel)]="gerenteSeleccionado" (ionChange)="actualizarMeses()" placeholder="Seleccione...">
+        <ion-select-option *ngFor="let g of gerentesLista" [value]="g">{{ g }}</ion-select-option>
+      </ion-select>
+    </ion-item>
 
-      <!-- FILTRO DE MES -->
-      <ion-item *ngIf="gerenteSeleccionado">
-        <ion-label>Mes</ion-label>
-        <ion-select [(ngModel)]="mesActual" (ionChange)="actualizarVistaPrevia()">
-          <ion-select-option *ngFor="let m of reportesPorGerente[gerenteSeleccionado] | keyvalue" [value]="m.key">
-            {{ m.key }}
-          </ion-select-option>
-        </ion-select>
-      </ion-item>
-    </ion-card-content>
-  </ion-card>
+    <ion-item class="modern-input" *ngIf="gerenteSeleccionado">
+      <ion-label>Mes</ion-label>
+      <ion-select [(ngModel)]="mesActual" (ionChange)="actualizarVistaPrevia()" placeholder="Seleccione mes...">
+        <ion-select-option *ngFor="let m of reportesPorGerente[gerenteSeleccionado] | keyvalue" [value]="m.key">
+          {{ m.key }}
+        </ion-select-option>
+      </ion-select>
+    </ion-item>
+  </div>
 
   <!-- Tabla de Reporte con tus estilos originales -->
   <div class="excel-frame" *ngIf="reporteActual && obtenerDia(reporteActual.fecha) !== 0">
@@ -123,29 +105,23 @@
         <!-- Filas Principales -->
         <tr *ngFor="let f of filasPrincipales; let i = index" [ngClass]="f.clase">
           <td>{{ diasHabiles }}</td>
-          <td>{{ apvDisponibles}}</td>
+          <td>{{ getApvPorGerente(reporteActual.Gerente || reporteActual.gerente) }}</td>
           <td class="text-left">
             <span class="concept-title">{{ f.concepto }}</span>
             <span class="concept-desc">{{ f.desc }}</span>
           </td>
           <td>{{ f.sem }}</td>
           <td>{{ f.mes }}</td>
-          <td>{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
-          <td>{{ calcObjMensual(+f.mes) | number:'1.0-0' }}</td>
-          <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL) | number:'1.0-0' }}</td>
-          <td class="blue-cell bold">
-            {{ getCampo6(f.concepto, reporteActual) | number:'1.0-0' }}
-          </td>
-          <td class="blue-cell bold">{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
+          <td>{{ calcObjDiario(f.mes, reporteActual.Gerente) | number:'1.0-0' }}</td>
+          <td>{{ calcObjMensual(+f.mes, reporteActual.Gerente) | number:'1.0-0' }}</td>
+          <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL, reporteActual.Gerente) |
+            number:'1.0-0' }}</td>
+          <td class="blue-cell bold">{{ getCampo6(f.concepto, reporteActual) | number:'1.0-0' }}</td>
+          <td class="blue-cell bold">{{ calcObjDiario(f.mes, reporteActual.Gerente) | number:'1.0-0' }}</td>
           <td class="blue-cell">{{ getRealDelDia(f.concepto, reporteActual) }}</td>
-          <td class="yellow-cell bold">
-            {{ getCampo9(f.concepto, reporteActual) | number:'1.0-0' }}
-          </td>
-          <td *ngIf="reporteActual && f.mes"
-            [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
-
+          <td class="yellow-cell bold">{{ getCampo9(f.concepto, reporteActual) | number:'1.0-0' }}</td>
+          <td [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
             {{ getPorcentaje(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL) | percent:'1.0-0' }}
-
           </td>
         </tr>
 
@@ -168,24 +144,23 @@
         <!-- Filas Finales -->
         <tr *ngFor="let f of filasFinales; let i = index" [ngClass]="f.clase">
           <td>{{ diasHabiles }}</td>
-          <td>{{ apvDisponibles }}</td>
+          <td>
+            {{ getApvPorGerente(reporteActual.Gerente) }}
+          </td>
           <td class="text-left">
             <span class="concept-title">{{ f.concepto }}</span>
             <span class="concept-desc">{{ f.desc }}</span>
           </td>
           <td>{{ f.sem }}</td>
           <td>{{ f.mes }}</td>
-          <td>{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
-          <td>{{ calcObjMensual(f.mes) | number:'1.0-0' }}</td>
-          <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL) | number:'1.0-0' }}</td>
-          <td class="blue-cell bold">
-            {{ getCampo6(f.concepto, reporteActual) | number:'1.0-0' }}
-          </td>
-          <td class="blue-cell bold">{{ calcObjDiario(f.mes) | number:'1.0-0' }}</td>
+          <td>{{ calcObjDiario(f.mes, reporteActual.Gerente) | number:'1.0-0' }}</td>
+          <td>{{ calcObjMensual(+f.mes, reporteActual.Gerente) | number:'1.0-0' }}</td>
+          <td class="yellow-cell bold">{{ calcObjAcumAlDia(f.mes, reporteActual.DIA_HABIL, reporteActual.Gerente) |
+            number:'1.0-0' }}</td>
+          <td class="blue-cell bold">{{ getCampo6(f.concepto, reporteActual) | number:'1.0-0' }}</td>
+          <td class="blue-cell bold">{{ calcObjDiario(f.mes, reporteActual.Gerente) | number:'1.0-0' }}</td>
           <td class="blue-cell">{{ getRealDelDia(f.concepto, reporteActual) }}</td>
-          <td class="yellow-cell bold">
-            {{ getCampo9(f.concepto, reporteActual) | number:'1.0-0' }}
-          </td>
+          <td class="yellow-cell bold">{{ getCampo9(f.concepto, reporteActual) | number:'1.0-0' }}</td>
           <td [ngClass]="getSemaforo(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL)">
             {{ getPorcentaje(f.concepto, reporteActual, f.mes, reporteActual.DIA_HABIL) | percent:'1.0-0' }}
           </td>

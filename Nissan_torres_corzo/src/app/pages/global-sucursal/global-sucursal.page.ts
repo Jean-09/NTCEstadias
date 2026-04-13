@@ -38,9 +38,7 @@ export class GlobalSucursalPage implements OnInit {
     try {
       const res = await this.api.getBySucursales(this.id);
       this.sucursal = res.data[0].Sucursal;
-      console.log('Sucursal obtenida:', this.sucursal);
     } catch (error) {
-      console.error('Error al obtener sucursal:', error);
     }
   }
 
@@ -51,7 +49,6 @@ export class GlobalSucursalPage implements OnInit {
       const dato = res.data.data[0];
       this.apvDisponibles = dato.Num_apv;
 
-      console.log(`APV disponibles: ${this.apvDisponibles}`);
     })
       .catch(err => {
         console.error(err)
@@ -98,8 +95,6 @@ export class GlobalSucursalPage implements OnInit {
       if (!this.reportesPorMes[claveMes]) {
         this.reportesPorMes[claveMes] = [];
       }
-
-      console.log(`Agrupando reporte con fecha ${r.fecha} bajo la clave ${claveMes}`);
 
       this.reportesPorMes[claveMes].push(r);
     }
@@ -254,7 +249,6 @@ export class GlobalSucursalPage implements OnInit {
 
       const res = await this.api.getDataGlobal(this.id);
       const datos = res.data.data;
-      console.log("Datos obtenidos de Strapi:", datos);
       let datosProcesados = datos.map((registro: any) => {
         if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
 

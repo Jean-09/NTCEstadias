@@ -523,6 +523,7 @@ export interface ApiNumeroApvNumeroApv extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    gerente: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -531,7 +532,7 @@ export interface ApiNumeroApvNumeroApv extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Num_apv: Schema.Attribute.Integer;
     publishedAt: Schema.Attribute.DateTime;
-    sucursal: Schema.Attribute.Relation<'oneToOne', 'api::sucursal.sucursal'>;
+    sucursal: Schema.Attribute.Relation<'manyToOne', 'api::sucursal.sucursal'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -561,7 +562,7 @@ export interface ApiSucursalSucursal extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     numero_apv: Schema.Attribute.Relation<
-      'oneToOne',
+      'oneToMany',
       'api::numero-apv.numero-apv'
     >;
     Plantilla: Schema.Attribute.String;

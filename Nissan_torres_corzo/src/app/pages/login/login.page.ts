@@ -15,7 +15,6 @@ export class LoginPage implements OnInit {
 
   constructor(private api: Login, private route: Router, private alertController: AlertController, private toastcontroller: ToastController, private act: ActivatedRoute,) {
     this.accesToken = act.snapshot.queryParams['access_token'] as string;
-    console.log(act.snapshot.queryParams)
   }
 
   identifier: string = "Admin";
@@ -38,13 +37,12 @@ export class LoginPage implements OnInit {
     }
 
     this.api.login(data).then((res: any) => {
-      console.log('respuesta', res);
       this.saveToken(res)
       
     }).catch((error: any) => {
-      console.log(error);
+
       if (error.code === 'ERR_BAD_REQUEST') {
-        this.presentAlert('Verifica los datos', 'Verificca tus datos');
+        this.presentAlert('Verifica los datos', 'Verifica tus datos');
         return
       }
       if (error.code === 'ERR_NETWORK') {

@@ -3,6 +3,7 @@ import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
+import { AlertController } from '@ionic/angular';
 
 
 @Component({
@@ -22,7 +23,7 @@ export class GlobalGerentePage implements OnInit {
 
 
 
-  constructor(private api: ExcelService, private act: ActivatedRoute,) {
+  constructor(private api: ExcelService, private act: ActivatedRoute, private alertCtrl: AlertController) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -36,17 +37,38 @@ export class GlobalGerentePage implements OnInit {
 
   async getapv() {
 
-    await this.api.getApvSucursal(this.id).then(res => {
-      res.data
-      const dato = res.data.data[0];
-      this.apvDisponibles = dato.Num_apv;
+    await this.api.getApvGerente(this.id).then(res => {
+      res.data.data.forEach((dato: any) => {
+        const gerente = this.normalizarNombre(dato.Gerente);
+        this.apvPorGerente[gerente] = Number(dato.Num_apv || 0);
+      });
 
-      console.log(`APV disponibles: ${this.apvDisponibles}`);
     })
       .catch(err => {
         console.error(err)
       });
   }
+
+  normalizarNombre(nombre: string): string {
+  return (nombre || '')
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+getApvPorGerente(gerente: string): number {
+
+  const cleanGerente = (gerente || '')
+    .replace(/\s+/g, ' ')   // elimina dobles espacios
+    .trim()
+    .toUpperCase();
+
+  const key = Object.keys(this.apvPorGerente).find(k =>
+    k.replace(/\s+/g, ' ').trim().toUpperCase() === cleanGerente
+  );
+
+  return this.apvPorGerente[key || ''] || 0;
+}
 
   actualizarSemanal() {
     this.filasPrincipales.forEach(f => {
@@ -58,7 +80,7 @@ export class GlobalGerentePage implements OnInit {
     });
   }
 
-  diaLimite = '';
+  diaLimite: number = 0;
 
   sucursal: any = {};
 
@@ -66,21 +88,30 @@ export class GlobalGerentePage implements OnInit {
     try {
       const res = await this.api.getBySucursales(this.id);
       this.sucursal = res.data[0];
-      console.log('Sucursal obtenida:', this.sucursal);
+
     } catch (error) {
-      console.error('Error al obtener sucursal:', error);
+
     }
   }
 
   async dispararAutomatizacion() {
+
+    if (!this.diaLimite || this.diaLimite < 1 || this.diaLimite > 31) {
+      const alert = await this.alertCtrl.create({
+        header: 'Error de Configuración',
+        message: 'Por favor, ingresa un día válido entre 1 y 31 para procesar el reporte.',
+        buttons: ['OK']
+      });
+      await alert.present();
+      return; // Detiene la ejecución si no es válido
+    }
     try {
-      console.log(this.sucursal)
+
       const response = await this.api.ExtraerDatosGerente(this.diaLimite, this.sucursal.Sucursal);
       await this.getGlobal();
       return response.data;
 
     } catch (error) {
-      console.error('Error en el servicio Nissan:', error);
       throw error;
     }
   }
@@ -178,9 +209,9 @@ export class GlobalGerentePage implements OnInit {
 
           const row = worksheet.addRow([
             this.diasHabiles, this.apvDisponibles, f.concepto, f.sem, f.mes,
-            Math.round(this.calcObjDiario(f.mes)), Math.round(this.calcObjMensual(f.mes)),
-            Math.round(this.calcObjAcumAlDia(f.mes, reporte.DIA_HABIL)),
-            Math.round(campo6), Math.round(this.calcObjDiario(f.mes)),
+            Math.round(this.calcObjDiario(f.mes, reporte.Gerente)), Math.round(this.calcObjMensual(f.mes, reporte.Gerente)),
+            Math.round(this.calcObjAcumAlDia(f.mes, reporte.DIA_HABIL, reporte.Gerente)),
+            Math.round(campo6), Math.round(this.calcObjDiario(f.mes, reporte.Gerente)),
             Math.round(campo7), Math.round(campo9), porcentaje
           ]);
 
@@ -207,7 +238,7 @@ export class GlobalGerentePage implements OnInit {
     // Generar y guardar archivo
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `Reporte_Global_${this.id}.xlsx`);
+    saveAs(blob, `Reporte_Global_${this.gerenteSeleccionado}.xlsx`);
   }
 
   getBorder(): Partial<ExcelJS.Borders> {
@@ -255,67 +286,71 @@ export class GlobalGerentePage implements OnInit {
   reportesPorGerente: any = {};
   gerentesLista: string[] = [];
   gerenteSeleccionado: string = '';
-async getGlobal() {
-  try {
-    const res = await this.api.getDataGlobalGerente(this.id);
-    const datos = res.data.data;
-    console.log('Datos Global Gerente:', datos);
+  async getGlobal() {
+    try {
+      const res = await this.api.getDataGlobalGerente(this.id);
+      const datos = res.data.data;
 
-    this.reportesPorGerente = {};
 
-    // 🔥 👉 AGREGAR ESTO (CLAVE)
-    const datosProcesados = datos.map((registro: any) => {
-      if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
+      this.reportesPorGerente = {};
 
-      const partes = registro.fecha.split('-');
-      const fechaActual = new Date(
-        parseInt(partes[0]),
-        parseInt(partes[1]) - 1,
-        parseInt(partes[2])
+      // 🔥 👉 AGREGAR ESTO (CLAVE)
+      const datosProcesados = datos.map((registro: any) => {
+        if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
+
+        const partes = registro.fecha.split('-');
+        const fechaActual = new Date(
+          parseInt(partes[0]),
+          parseInt(partes[1]) - 1,
+          parseInt(partes[2])
+        );
+
+        let contadorHabilesInMes = 0;
+        let fechaAux = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+
+        while (fechaAux <= fechaActual) {
+          if (!this.esDiaInhabilMexico(fechaAux)) contadorHabilesInMes++;
+          fechaAux.setDate(fechaAux.getDate() + 1);
+        }
+
+        return { ...registro, DIA_HABIL: contadorHabilesInMes };
+      });
+
+      // 🔥 USA LOS PROCESADOS, NO LOS ORIGINALES
+      datosProcesados.sort((a: any, b: any) =>
+        new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
       );
 
-      let contadorHabilesInMes = 0;
-      let fechaAux = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+      datosProcesados.forEach((r: any) => {
+        const nombreG = (r.Gerente || r.gerente || 'SIN ASIGNAR')
+          .trim()
+          .toUpperCase();
+        if (!this.reportesPorGerente[nombreG]) this.reportesPorGerente[nombreG] = {};
 
-      while (fechaAux <= fechaActual) {
-        if (!this.esDiaInhabilMexico(fechaAux)) contadorHabilesInMes++;
-        fechaAux.setDate(fechaAux.getDate() + 1);
+        const fechaPartes = r.fecha.split('-');
+        const mesClave = `${fechaPartes[0]}-${fechaPartes[1].replace(/^0/, '')}`;
+
+        if (!this.reportesPorGerente[nombreG][mesClave]) {
+          this.reportesPorGerente[nombreG][mesClave] = [];
+        }
+
+        this.reportesPorGerente[nombreG][mesClave].push(r);
+      });
+
+      this.gerentesLista = Object.keys(this.reportesPorGerente);
+
+
+      if (this.gerentesLista.length > 0) {
+        this.gerenteSeleccionado = this.gerentesLista[0];
+        this.actualizarMeses();
       }
 
-      return { ...registro, DIA_HABIL: contadorHabilesInMes };
-    });
 
-    // 🔥 USA LOS PROCESADOS, NO LOS ORIGINALES
-    datosProcesados.sort((a: any, b: any) =>
-      new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-    );
 
-    datosProcesados.forEach((r: any) => {
-      const nombreG = r.Gerente || 'Sin Asignar';
-      if (!this.reportesPorGerente[nombreG]) this.reportesPorGerente[nombreG] = {};
-
-      const fechaPartes = r.fecha.split('-');
-      const mesClave = `${fechaPartes[0]}-${fechaPartes[1].replace(/^0/, '')}`;
-
-      if (!this.reportesPorGerente[nombreG][mesClave]) {
-        this.reportesPorGerente[nombreG][mesClave] = [];
-      }
-
-      this.reportesPorGerente[nombreG][mesClave].push(r);
-    });
-
-    this.gerentesLista = Object.keys(this.reportesPorGerente);
-    console.log('Gerentes encontrados:', this.gerentesLista);
-
-    if (this.gerentesLista.length > 0) {
-      this.gerenteSeleccionado = this.gerentesLista[0];
-      this.actualizarMeses();
+    } catch (e) {
+      console.error(e);
     }
-
-  } catch (e) {
-    console.error(e);
   }
-}
   actualizarMeses() {
     const meses = Object.keys(this.reportesPorGerente[this.gerenteSeleccionado]);
     this.mesActual = meses.length > 0 ? meses[0] : '';
@@ -490,7 +525,7 @@ async getGlobal() {
   getPorcentaje(concepto: string, reporteActual: any, mes: number, diaHabil: number): number {
     const realAcumulado = this.getCampo9(concepto, reporteActual);
 
-    const objAcumulado = this.calcObjAcumAlDia(mes, diaHabil);
+    const objAcumulado = this.calcObjAcumAlDia(mes, diaHabil, reporteActual.Gerente);
 
     if (!objAcumulado || objAcumulado === 0) return 0;
 
@@ -538,25 +573,25 @@ async getGlobal() {
   }
 
   apvDisponibles: any[] = [];
+  apvPorGerente: { [key: string]: number } = {};
 
-  calcObjDiario(mes: number): number {
-    const valor = (mes * Number(this.apvDisponibles)) / this.diasHabiles;
-
+  calcObjDiario(mes: number, gerente: string): number {
+    const apv = this.getApvPorGerente(gerente);
+    const valor = (mes * apv) / this.diasHabiles;
     return Number(valor.toFixed(3));
   }
 
-  calcObjMensual(mes: number): number {
-    return this.calcObjDiario(mes) * this.diasHabiles;
+  calcObjMensual(mes: number, gerente: string): number {
+    return this.calcObjDiario(mes, gerente) * this.diasHabiles;
   }
 
-  calcObjAcumAlDia(mes: number, diaHabil: number): number {
+  calcObjAcumAlDia(mes: number, diaHabil: number, gerente: string): number {
 
-    const objDiarioReal = this.calcObjDiario(mes);
+    const objDiarioReal = this.calcObjDiario(mes, gerente);
 
     const objParaCalculo = objDiarioReal === 0 ? 1 : objDiarioReal;
-
     const diaParaCalculo = diaHabil === 0 ? 1 : diaHabil;
-    console.log(objParaCalculo, diaParaCalculo);
+
     return objParaCalculo * diaParaCalculo;
   }
   // filaAnteriorAcum: valor acumulado del día anterior (ACUMUL. REAL DEL DÍA)
@@ -682,35 +717,38 @@ async getGlobal() {
     return Number(campo6 || 0) + Number(campo7 || 0);
   }
 
-  paginaActual: number = 1;
+  paginaActual: number = 6;
   reportesPorPagina: number = 1;
 
 
   get reporteActual() {
-    return this.Global[this.paginaActual +1];
+    return this.Global[this.paginaActual];
   }
 
   get totalPaginas(): number {
+    // Restamos 1 porque el índice 0 es el que siempre omites
     return this.Global.length > 0 ? this.Global.length - 1 : 0;
   }
 
   paginaAnterior() {
-    if (this.paginaActual > 1) {
+    if (this.paginaActual > 0) {
       this.paginaActual--;
     }
   }
 
+  // Asegúrate de que al navegar nunca superes length - 1
   paginaSiguiente() {
-    if (this.paginaActual < this.totalPaginas) {
+    if (this.paginaActual < this.Global.length - 1) {
       this.paginaActual++;
     }
   }
 
-  irAPrimera() {
-    this.paginaActual = 1;
+  irAUltima() {
+    this.paginaActual = this.Global.length - 1;
   }
 
-  irAUltima() {
-    this.paginaActual = this.totalPaginas;
+  irAPrimera() {
+    this.paginaActual = 0;
   }
+
 }

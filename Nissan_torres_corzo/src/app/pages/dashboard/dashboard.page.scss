@@ -208,3 +208,36 @@ ion-label {
 .lista-scroll::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Contenedor principal que hereda tus estilos de .card-section */
+.card-section {
+  h2 {
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #ffffff;
+    border-left: 5px solid #C3002F;
+    padding-left: 10px;
+  }
+}
+
+/* Estilo para los inputs oscuros */
+.input-dark {
+  --background: #1f1f1f;
+  --color: #ffffff;
+  --border-radius: 10px;
+  margin-bottom: 15px;
+  
+  ion-label {
+    color: #cccccc !important;
+  }
+}
+
+/* Asegurar que el componente de fecha se vea bien */
+ion-datetime-button {
+  --color: #ffffff;
+}
+
+/* Opcional: Ajuste para el color del texto del select */
+ion-select {
+  color: #ffffff;
+}

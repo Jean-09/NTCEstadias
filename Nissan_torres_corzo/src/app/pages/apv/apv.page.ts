@@ -43,7 +43,6 @@ export class APVPage implements OnInit {
     try {
       const res = await this.api.getBySucursales(this.id);
       this.sucursal = res.data[0].Sucursal;
-      console.log('Sucursal obtenida:', this.sucursal);
     } catch (error) {
       console.error('Error al obtener sucursal:', error);
     } }
@@ -63,11 +62,9 @@ export class APVPage implements OnInit {
   // Obtiene datos desde API
   getApv() {
     this.api.getApv(this.id).then((res: any) => {
-      console.log("DATA ORIGINAL:", res.data);
       this.apvData = res.data;
       this.filtrarPorGerente(this.apvData);
     }).catch((error: any) => {
-      console.log(error);
     });
   }
 
@@ -217,7 +214,6 @@ export class APVPage implements OnInit {
 
     this.paginas = resultadoFinal;
 
-    console.log("Páginas organizadas por gerente y fechas:", this.paginas);
 
     // LÓGICA DE PAGINACIÓN: Seleccionar el primer gerente encontrado para que no inicie vacío
     const nombresGerentes = Object.keys(this.paginas);
@@ -361,7 +357,6 @@ export class APVPage implements OnInit {
         const anchoBloque = tieneD ? 7 : 6;
         const colInicioNum = 2 + (iCol * 8);
 
-        // Cabeceras de fecha
         let fActual = 1;
         const celdaDia = sheet.getCell(fActual, colInicioNum);
         celdaDia.value = `DIA HÁBIL: ${this.calcularDiasHabiles(col.fechaInicio, col.fechaFin)}`;
@@ -376,7 +371,6 @@ export class APVPage implements OnInit {
         celdaRango.alignment = { horizontal: 'center' };
         sheet.mergeCells(fActual, colInicioNum, fActual, colInicioNum + (anchoBloque - 1));
 
-        // Resetear fila para empezar las tablas de este bloque de fechas
         let filaDeTablas = 5;
 
         const dibujarTabla = (dataItem: any, titulo: string, idPrefix: string, iV?: number) => {
@@ -384,7 +378,6 @@ export class APVPage implements OnInit {
           sheet.getCell(filaDeTablas, 1).value = titulo;
           sheet.getCell(filaDeTablas, 1).font = { bold: true };
 
-          // Definir multiplicador de objetivos según el nivel
           const numCalculo = idPrefix === 'global' ? 22 :
             idPrefix === 'gerente' ? col.vendedores.length : 1;
 
@@ -441,8 +434,6 @@ export class APVPage implements OnInit {
               sheet.getCell(r, colInicioNum + k).alignment = { horizontal: 'center' };
             }
           });
-
-          // Espacio para la siguiente tabla (Global -> Gerente -> Vendedor)
           filaDeTablas += this.conceptos.length + 2;
         };
 

@@ -1,73 +1,105 @@
 <ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>APV {{sucursal}}</ion-title>
+   <ion-toolbar class="toolbar-nissan">
     <ion-buttons slot="start">
       <ion-back-button></ion-back-button>
     </ion-buttons>
-  </ion-toolbar>
-
-  <ion-toolbar color="light" *ngIf="gerenteSeleccionado">
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 10px;">
-      <ion-button fill="clear" (click)="anteriorGerente()">
-        <ion-icon slot="icon-only" name="chevron-back-outline"></ion-icon>
-      </ion-button>
-
-      <div style="text-align: center; flex-grow: 1;">
-        <strong style="font-size: 1.1em; color: var(--ion-color-primary);">
-          {{ gerenteSeleccionado }}
-        </strong>
-        <div style="font-size: 0.8em; color: gray;">
-          Gerente {{ Object.keys(paginas).indexOf(gerenteSeleccionado) + 1 }} de {{ Object.keys(paginas).length }}
-        </div>
+    <div class="header-container">
+      <img src="assets/nissan.png" class="logo" />
+      <div>
+        <span class="subtitle">Grupo Torres Corzo</span>
+        <ion-title>APV {{sucursal}}</ion-title>
+        
       </div>
-
-      <ion-button fill="clear" (click)="siguienteGerente()">
-        <ion-icon slot="icon-only" name="chevron-forward-outline"></ion-icon>
-      </ion-button>
     </div>
   </ion-toolbar>
+
+<ion-toolbar *ngIf="gerenteSeleccionado" class="gerente-toolbar">
+  <div class="gerente-container">
+
+    <ion-button fill="clear" class="nav-btn" (click)="anteriorGerente()">
+      <ion-icon slot="icon-only" name="chevron-back-outline"></ion-icon>
+    </ion-button>
+
+    <div class="gerente-info">
+      <div class="gerente-nombre">
+        {{ gerenteSeleccionado }}
+      </div>
+
+      <div class="gerente-posicion">
+        Gerente {{ Object.keys(paginas).indexOf(gerenteSeleccionado) + 1 }}
+        de {{ Object.keys(paginas).length }}
+      </div>
+    </div>
+
+    <ion-button fill="clear" class="nav-btn" (click)="siguienteGerente()">
+      <ion-icon slot="icon-only" name="chevron-forward-outline"></ion-icon>
+    </ion-button>
+
+  </div>
+</ion-toolbar>
 </ion-header>
 
 <ion-content>
+<div class="modern-card">
 
-  <ion-card>
-    <ion-card-header>
-      <ion-card-title>Generador de Reportes</ion-card-title>
-    </ion-card-header>
-    <ion-card-content>
-      <ion-item>
-        <ion-label position="stacked">Procesar hasta el día:</ion-label>
-        <ion-input type="number" [(ngModel)]="diaLimite" min="1" max="31"></ion-input>
-      </ion-item>
-      <ion-button expand="block" (click)="dispararAutomatizacion()" class="ion-margin-top" color="success">
-        <ion-icon name="play-outline" slot="start"></ion-icon>
-        Lanzar Automatización
-      </ion-button>
-    </ion-card-content>
-  </ion-card>
+  <div class="card-header">
+    <h3>
+      <ion-icon name="analytics-outline"></ion-icon>
+      Generador de Reportes
+    </h3>
+    <p>Configura el corte de información para procesar los indicadores.</p>
+  </div>
 
-  <ion-button fill="solid" color="success" (click)="exportarExcel()">
-    <ion-icon slot="start" name="download-outline"></ion-icon>
-    Exportar Excel
+  <ion-item class="modern-input">
+    <ion-label position="stacked">
+      Procesar hasta el día
+    </ion-label>
+
+    <ion-input
+      type="number"
+      placeholder="Ej: 31"
+      [(ngModel)]="diaLimite"
+      min="1"
+      max="31"
+      inputmode="numeric"
+      class="small-input">
+    </ion-input>
+
+    <ion-note slot="helper">
+      Indica el día límite para calcular el desempeño mensual.
+    </ion-note>
+  </ion-item>
+
+  <ion-button
+    expand="block"
+    class="btn-nissan-red"
+    (click)="dispararAutomatizacion()">
+
+    <ion-icon name="play-circle-outline" slot="start"></ion-icon>
+    Lanzar Automatización
+
   </ion-button>
+
+</div>
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="exportarExcel()" style="--background: #C3002F;">
+      <ion-icon name="download-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
   <div *ngIf="gerenteSeleccionado && paginas[gerenteSeleccionado]" class="pagina">
-
     <div class="fila-horizontal">
-
       <div class="columna-lateral">
         <div class="spacer-header"></div>
         <div class="spacer-header"></div>
-
         <div class="seccion-lateral">
           <div class="titulo-seccion">GLOBAL</div>
           <div class="fila-lateral" *ngFor="let c of conceptos">{{ c.nombre }}</div>
         </div>
-
         <div class="seccion-lateral">
           <div class="titulo-seccion">{{ gerenteSeleccionado }}</div>
           <div class="fila-lateral" *ngFor="let c of conceptos">{{ c.nombre }}</div>
         </div>
-
         <div class="seccion-lateral" *ngFor="let v of getColumnas(paginas[gerenteSeleccionado])[0]?.vendedores">
           <div class="titulo-seccion">{{ v.Apv_nombre }}</div>
           <div class="fila-lateral" *ngFor="let c of conceptos">{{ c.nombre }}</div>
@@ -75,7 +107,6 @@
       </div>
 
       <div *ngFor="let col of getColumnas(paginas[gerenteSeleccionado]); let iCol = index" class="bloque">
-
         <div class="cabecera">
           <div style="color: white;">DIA HÁBIL: {{ calcularDiasHabiles(col.fechaInicio, col.fechaFin) }}</div>
           <div style="color: white;">INI: {{ col.fechaInicio }} | FIN: {{ col.fechaFin }}</div>
@@ -103,19 +134,14 @@
                 <td style="background-color: #f2f2f2;">{{ getObjMes(i, 22) }}</td>
                 <td style="background-color: #f2f2f2;">{{ getObjDia(i, col, 22) }}</td>
                 <td style="background-color: white;">{{ col.global?.Mes?.[c.key] || 0 }}</td>
-
                 <td [style]="semaforos['global-' + iCol + '-' + c.key + '-mes']">
                   {{ getPorcentaje(col.global?.Mes?.[c.key], i, col, 22) }}%
                 </td>
-
                 <td style="background-color: white;">{{ col.global?.Maduracion?.[c.key] || 0 }}</td>
-
                 <td [style]="semaforos['global-' + iCol + '-' + c.key + '-mad']">
                   {{ getPorcentaje(col.global?.Maduracion?.[c.key], i, col, 22) }}%
                 </td>
-
-                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i,
-                  col.global) }}</td>
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i, col.global) }}</td>
               </tr>
             </tbody>
           </table>
@@ -143,18 +169,14 @@
                 <td style="background-color: #f2f2f2;">{{ getObjMes(i, col.vendedores.length) }}</td>
                 <td style="background-color: #f2f2f2;">{{ getObjDia(i, col, col.vendedores.length) }}</td>
                 <td style="background-color: white;">{{ col.gerente?.Mes?.[c.key] || 0 }}</td>
-
                 <td [style]="semaforos['gerente-' + iCol + '-' + c.key + '-mes']">
                   {{ getPorcentaje(col.gerente?.Mes?.[c.key], i, col, col.vendedores.length) }}%
                 </td>
-
                 <td style="background-color: white;">{{ col.gerente?.Maduracion?.[c.key] || 0 }}</td>
-
                 <td [style]="semaforos['gerente-' + iCol + '-' + c.key + '-mad']">
                   {{ getPorcentaje(col.gerente?.Maduracion?.[c.key], i, col, col.vendedores.length) }}%
                 </td>
-                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i,
-                  col.gerente) }}</td>
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i, col.gerente) }}</td>
               </tr>
             </tbody>
           </table>
@@ -182,22 +204,18 @@
                 <td style="background-color: #f2f2f2;">{{ getObjMes(i, 1) }}</td>
                 <td style="background-color: #f2f2f2;">{{ getObjDia(i, col, 1) }}</td>
                 <td style="background-color: white;">{{ v?.Mes?.[c.key] || 0 }}</td>
-
                 <td [style]="semaforos['vendedor-' + iV + '-' + iCol + '-' + c.key + '-mes']">
                   {{ getPorcentaje(v?.Mes?.[c.key], i, col, 1) }}%
                 </td>
-
                 <td style="background-color: white;">{{ v?.Maduracion?.[c.key] || 0 }}</td>
                 <td [style]="semaforos['vendedor-' + iV + '-' + iCol + '-' + c.key + '-mad']">
                   {{ getPorcentaje(v?.Maduracion?.[c.key], i, col, 1) }}%
                 </td>
-
                 <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i, v) }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-
       </div>
     </div>
   </div>

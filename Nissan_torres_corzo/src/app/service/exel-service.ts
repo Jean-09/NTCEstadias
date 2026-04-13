@@ -13,12 +13,16 @@ export class ExcelService {
 
   private headers() {
     const token = localStorage.getItem('token')
-    console.log(token)
+
     return {
       headers: {
         'Authorization': 'Bearer ' + token
       }
     }
+  }
+
+  actualizarDatos(mes: number, anio: number, sucursal: string) {
+    return axios.post(`http://localhost:5000/actualizar-datos`,{ mes, anio, sucursal }, this.headers());
   }
 
   async getSucursales() {
@@ -31,13 +35,12 @@ export class ExcelService {
     return res.data;
   }
 
-  async getDataGlobalGerente(id: any) {
-    // Se cambia $null a false para traer los que NO están vacíos
-    let res = await axios.get(
-        `${this.url}/globals?filters[sucursal][documentId][$eq]=${id}&filters[Gerente][$null]=false&pagination[pageSize]=1000`, 
-        this.headers()
-    );
-    return res;
+async getDataGlobalGerente(id: any) {
+  let res = await axios.get(
+    `${this.url}/globals?filters[sucursal][documentId][$eq]=${id}&filters[Gerente][$null]=false&pagination[pageSize]=1000`,
+    this.headers()
+  );
+  return res;
 }
 
   async generateExcel() {
@@ -80,19 +83,19 @@ export class ExcelService {
 
   async diaLimite(dia: string, sucursal: any) {
     const res = await axios.post('http://localhost:5000/ejecutar-reporte', { dia: dia, sucursal: sucursal }, this.headers());
-    console.log('Respuesta del servidor:', res.data);
+
     return res;
   }
 
-    async ExtraerDatosGerente(dia: string, sucursal: any) {
+  async ExtraerDatosGerente(dia: number, sucursal: any) {
     const res = await axios.post('http://localhost:5000/ejecutar-gerente', { dia: dia, sucursal: sucursal }, this.headers());
-    console.log('Respuesta del servidor:', res.data);
+
     return res;
   }
 
   async ExtraerDatosApv(dia: string, sucursal: any) {
     const res = await axios.post('http://localhost:5000/ejecutar-apv', { dia: dia, sucursal: sucursal }, this.headers());
-    console.log('Respuesta del servidor:', res.data);
+
     return res;
   }
 
@@ -103,7 +106,14 @@ export class ExcelService {
 
   async getApvSucursal(id: any) {
     return await axios.get(
-      `${this.url}/numero-apvs?filters[sucursal][documentId][$eq]=${id}`,
+      `${this.url}/numero-apvs?filters[sucursal][documentId][$eq]=${id}&filters[gerente][$null]=true`,
+      this.headers()
+    );
+  }
+
+    async getApvGerente(id: any) {
+    return await axios.get(
+      `${this.url}/numero-apvs?filters[sucursal][documentId][$eq]=${id}&filters[gerente][$notNull]=true`,
       this.headers()
     );
   }

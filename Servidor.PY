@@ -76,7 +76,29 @@ def correr_apv():
     threading.Thread(target=ejecutar_script).start()
 
     return jsonify({"status": "ok", "mensaje": f"Reporte APV iniciado para {sucursal}"}), 200
+
+@app.route('/actualizar-datos', methods=['POST'])
+def actualizar():
+    data = request.json
+
+    mes = data.get('mes')
+    anio = data.get('anio')
+    sucursal = data.get('sucursal')
+
+    token = request.headers.get('Authorization')
+
+    script = os.path.join(os.path.dirname(__file__), "actualizar_datos.py")
+
+    comando = f'python "{script}" {mes} {anio} "{token}" "{sucursal}"'
+
+    def run():
+        subprocess.run(comando, shell=True)
+
+    threading.Thread(target=run).start()
+
+    return jsonify({"ok": True})
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    
     

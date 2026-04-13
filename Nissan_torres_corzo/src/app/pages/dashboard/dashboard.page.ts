@@ -13,9 +13,15 @@ export class DashboardPage implements OnInit {
 
   sucursales: any[] = [];
 
+  mes!: number;
+  anio!: number;
+  sucursalSeleccionada: string = '';
+  fechaSeleccionada: string = new Date().toISOString();
+
   constructor(private router: Router, private api: ExcelService, private apiSuc: Sucursales) { }
 
   async ngOnInit() {
+    await this.actualizarFecha();
     await this.getGlobalSucursales();
   }
 
@@ -80,6 +86,31 @@ export class DashboardPage implements OnInit {
     }
   }
 
+  actualizarFecha() {
+    const fecha = new Date(this.fechaSeleccionada);
+    this.mes = fecha.getMonth() + 1;
+    this.anio = fecha.getFullYear();
+  }
+
+  async actualizar() {
+    const token = localStorage.getItem('token') || '';
+
+    if (!this.sucursalSeleccionada) {
+      alert("Por favor selecciona una sucursal");
+      return;
+    }
+
+    try {
+      await this.api.actualizarDatos(
+        this.mes,
+        this.anio,
+        this.sucursalSeleccionada
+      );
+      alert("Proceso iniciado para " + this.sucursalSeleccionada);
+    } catch (err) {
+    }
+  }
+
   eliminarSucursal(id: number) {
     this.apiSuc.delSucursal(id).then(() => {
       this.getGlobalSucursales();
@@ -109,7 +140,6 @@ export class DashboardPage implements OnInit {
     try {
       const data = await this.api.getSucursales();
       this.sucursales = data.data;
-      console.log(this.sucursales);
     } catch (error) {
       console.error('Error al obtener sucursales:', error);
     }

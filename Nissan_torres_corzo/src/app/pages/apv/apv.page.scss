@@ -144,3 +144,236 @@ ion-content {
     color: black !important;
   }
 }
+
+/* --- Header y Toolbars --- */
+ion-toolbar {
+  --background: #1a1a1a;
+  --color: white;
+  border-bottom: 2px solid #C3002F;
+}
+
+ion-title {
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* --- Tarjetas (Cards) --- */
+ion-card {
+  background: #1a1a1a;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 0;
+  margin: 20px;
+  box-shadow: none;
+}
+
+ion-card-header {
+  background: #222;
+  border-bottom: 2px solid #C3002F;
+}
+
+ion-card-title {
+  color: white;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+/* --- Inputs e Items --- */
+ion-item {
+  --background: #000;
+  --color: white;
+  --border-color: #444;
+  border: 1px solid #444;
+}
+
+ion-label {
+  color: #ccc !important;
+}
+
+ion-input {
+  color: white !important;
+}
+
+/* --- Botones --- */
+.btn-nissan-principal {
+  --background: #C3002F;
+  --background-activated: #a00026;
+  --color: white;
+  border-radius: 0;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.btn-nissan-secundario {
+  --background: #2d2926;
+  --background-activated: #1a1816;
+  --color: white;
+  margin-left: 20px;
+  border-radius: 0;
+  text-transform: uppercase;
+}
+
+/* --- FABs --- */
+ion-fab-button {
+  --background: #C3002F;
+  --background-activated: #a00026;
+  --color: white;
+  border: 2px solid #000;
+  border-radius: 50%;
+  --box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+/* --- Scrollbar global para el tema oscuro --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border: 1px solid #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C3002F;
+}
+
+.toolbar-nissan {
+  --background: #c3002f;
+  color: white;
+}
+
+.gerente-toolbar {
+  --background: #0b0b0b;
+  --color: #ffffff;
+  border-bottom: 2px solid #c00000;
+}
+
+.gerente-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  width: 100%;
+  background: #0b0b0b;
+}
+
+.gerente-info {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gerente-nombre {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.gerente-posicion {
+  font-size: 12px;
+  color: #ff4d4d;
+}
+
+.nav-btn {
+  --color: #ff1a1a;
+  --background: transparent;
+  --box-shadow: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  transition: 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 0, 0, 0.12);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.modern-card {
+  background: #0b0b0b; // 🖤 base real
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 0, 0, 0.25);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+.card-header {
+  margin-bottom: 14px;
+}
+
+.card-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff; // 🔥 texto principal blanco SOLO aquí (necesario)
+  margin: 0;
+}
+
+.card-header p {
+  font-size: 12px;
+  color: #b3b3b3; // gris técnico, no blanco puro
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.modern-input {
+  --background: transparent;
+  margin-bottom: 12px;
+}
+
+.modern-input ion-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff1a1a; // 🔴 rojo Nissan
+}
+.small-input {
+  --background: #111;
+  --color: #ffffff;
+
+  border: 1px solid rgba(255, 0, 0, 0.35);
+  border-radius: 10px;
+
+  font-size: 16px; // 🔥 más legible
+  height: 44px;    // 🔥 estándar app real
+
+  padding: 10px 12px;
+
+
+  text-align: center;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+ion-note {
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.btn-nissan-red {
+  --background: linear-gradient(135deg, #b30000, #ff1a1a);
+  --color: #ffffff;
+  font-weight: 700;
+
+  border-radius: 10px;
+  height: 44px;
+
+  box-shadow: 0 8px 18px rgba(255, 0, 0, 0.25);
+}

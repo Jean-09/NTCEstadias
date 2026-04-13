@@ -3,7 +3,7 @@
     <div class="header-container">
       <img src="assets/nissan.png" class="logo" />
       <div>
-        <ion-title>Dashboard</ion-title>
+        <ion-title></ion-title>
         <span class="subtitle">Grupo Torres Corzo</span>
       </div>
     </div>
@@ -133,6 +133,39 @@
     </div>
 
   </div>
+
+<div class="card-section">
+  <h2>Actualizar Plantilla de Datos</h2>
+  
+  <ion-item class="input-dark">
+    <ion-label>Fecha (Mes/Año)</ion-label>
+    <ion-datetime-button datetime="datetime"></ion-datetime-button>
+  </ion-item>
+
+  <ion-modal [keepContentsMounted]="true">
+    <ng-template>
+      <ion-datetime 
+        id="datetime"
+        presentation="month-year"
+        [(ngModel)]="fechaSeleccionada"
+        (ionChange)="actualizarFecha()">
+      </ion-datetime>
+    </ng-template>
+  </ion-modal>
+
+  <ion-item class="input-dark">
+    <ion-label>Sucursal</ion-label>
+    <ion-select [(ngModel)]="sucursalSeleccionada" placeholder="Selecciona una sucursal">
+      <ion-select-option *ngFor="let s of sucursales" [value]="s.Sucursal">
+        {{s.Sucursal}}
+      </ion-select-option>
+    </ion-select>
+  </ion-item>
+
+  <ion-button expand="block" class="btn-card red" (click)="actualizar()">
+    Actualizar
+  </ion-button>
+</div>
 
  
 

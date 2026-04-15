@@ -3,6 +3,7 @@ import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
+import { AlertController } from '@ionic/angular';
 
 @Component({
   selector: 'app-global-sucursal',
@@ -22,7 +23,7 @@ export class GlobalSucursalPage implements OnInit {
 
 
 
-  constructor(private api: ExcelService, private act: ActivatedRoute,) {
+  constructor(private api: ExcelService, private act: ActivatedRoute,private alertCtrl: AlertController) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -65,13 +66,22 @@ export class GlobalSucursalPage implements OnInit {
     });
   }
 
-  diaLimite = '';
+  diaLimite:number = 0;
 
   async dispararAutomatizacion() {
+    if (!this.diaLimite || this.diaLimite < 1 || this.diaLimite > 31) {
+      const alert = await this.alertCtrl.create({
+        header: 'Error de Configuración',
+        message: 'Por favor, ingresa un día válido entre 1 y 31 para procesar el reporte.',
+        buttons: ['OK']
+      });
+      await alert.present();
+      return;
+    }
     try {
-      const response = await this.api.diaLimite(this.diaLimite, this.sucursal);
+      await this.api.diaLimite(this.diaLimite, this.sucursal);
+
       await this.getGlobal();
-      return response.data;
 
     } catch (error) {
       console.error('Error en el servicio Nissan:', error);
@@ -618,9 +628,9 @@ export class GlobalSucursalPage implements OnInit {
     return this.Global[this.paginaActual];
   }
 
-get totalPaginas(): number {
-  return this.Global.length > 0 ? this.Global.length - 1 : 0;
-}
+  get totalPaginas(): number {
+    return this.Global.length > 0 ? this.Global.length - 1 : 0;
+  }
 
   paginaAnterior() {
     if (this.paginaActual > 1) {

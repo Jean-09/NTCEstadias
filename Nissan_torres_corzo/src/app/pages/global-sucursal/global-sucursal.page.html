@@ -7,7 +7,7 @@
       <img src="assets/nissan.png" class="logo" />
       <div>
         <span class="subtitle">Grupo Torres Corzo</span>
-        <ion-title>Reportes Globales</ion-title>
+        <ion-title>Reportes Globales ({{sucursal}})</ion-title>
       </div>
     </div>
   </ion-toolbar>
@@ -70,7 +70,7 @@
         <thead>
           <tr class="row-1">
             <th colspan="2"></th>
-            <th colspan="13" class="main-title">DESEMPEÑO GLOBAL C/ APV Y F & I (ZACATECAS) {{ reporteActual.fecha |
+            <th colspan="13" class="main-title">DESEMPEÑO GLOBAL C/ APV Y F & I ({{sucursal}}) {{ reporteActual.fecha |
               date: 'dd/MM/yyyy' }}</th>
             <th class="yellow-cell">{{reporteActual.DIA_HABIL}}</th>
           </tr>

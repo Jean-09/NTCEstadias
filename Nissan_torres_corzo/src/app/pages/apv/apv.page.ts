@@ -39,19 +39,20 @@ export class APVPage implements OnInit {
     await this.getApv();
   }
 
-     async getSucursal() {
+  async getSucursal() {
     try {
       const res = await this.api.getBySucursales(this.id);
       this.sucursal = res.data[0].Sucursal;
     } catch (error) {
       console.error('Error al obtener sucursal:', error);
-    } }
+    }
+  }
 
   async dispararAutomatizacion() {
     try {
-      const response = await this.api.ExtraerDatosApv(this.diaLimite, this.sucursal);
+      await this.api.ExtraerDatosApv(this.diaLimite, this.sucursal);
+
       await this.getApv();
-      return response.data;
 
     } catch (error) {
       console.error('Error en el servicio Nissan:', error);
@@ -447,7 +448,7 @@ export class APVPage implements OnInit {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Reporte_APV_${new Date().getTime()}.xlsx`);
+    saveAs(new Blob([buffer]), `Reporte_APV_${this.sucursal}.xlsx`);
 
     // Restaurar visualización en la App
     this.procesarSemaforos(this.gerenteSeleccionado);

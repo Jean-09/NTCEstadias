@@ -38,6 +38,7 @@ export class LoginPage implements OnInit {
 
     this.api.login(data).then((res: any) => {
       this.saveToken(res)
+      console.log(res)
       
     }).catch((error: any) => {
 

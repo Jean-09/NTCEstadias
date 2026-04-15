@@ -6,18 +6,26 @@ import re
 import threading
 import requests
 import sys
+import calendar
 from datetime import datetime
 import gc
 import win32event
 import win32api
 import winerror
+import pyautogui
+import pytesseract
+import cv2
+import numpy as np
 
-# Configuracion de instancia unica (Mutex)
+
+    #Configuracion de instancia unica (Mutex)
 mutex = win32event.CreateMutex(None, False, "Global\\REPORTE_NISSAN_MUTEX")
 if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
     sys.exit(0)
 
-# Argumentos de linea de comandos
+
+print("SCRIPT ARRANCÓ")
+
 DIA_LIMITE = int(sys.argv[1]) if len(sys.argv) > 1 else 31
 TOKEN = sys.argv[2] if len(sys.argv) > 2 else None
 SUCURSAL_BUSQUEDA = (sys.argv[3] if len(sys.argv) > 3 else "Zacatecas").strip()
@@ -33,13 +41,11 @@ if TOKEN:
 DOC_ID_SUCURSAL = None
 NOMBRE_ARCHIVO = None
 
-# Obtiene datos de la sucursal desde Strapi
+
 def obtener_configuracion_sucursal():
     global DOC_ID_SUCURSAL, NOMBRE_ARCHIVO
     try:
-        res = session.get(
-            f"{API_URL_SUCURSALES}?filters[Sucursal][$eq]={SUCURSAL_BUSQUEDA}"
-        )
+        res = session.get(f"{API_URL_SUCURSALES}?filters[Sucursal][$eq]={SUCURSAL_BUSQUEDA}")
         if res.ok:
             datos = res.json().get("data", [])
             if datos:
@@ -48,31 +54,32 @@ def obtener_configuracion_sucursal():
                 archivo_db = suc.get("Plantilla")
                 user_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
                 NOMBRE_ARCHIVO = os.path.join(user_downloads, archivo_db)
-                print(f"Sucursal: {SUCURSAL_BUSQUEDA} (ID: {DOC_ID_SUCURSAL})")
+                print("Sucursal:", SUCURSAL_BUSQUEDA)
                 return True
         return False
-    except Exception:
+    except Exception as e:
+        print("Error sucursal:", e)
         return False
 
-# Procesa formatos de fecha desde Excel
+
 def convertir_fecha(valor):
     if not valor:
         return None
     if isinstance(valor, datetime):
         return valor
-    texto = str(valor).strip()
-    match = re.search(r"(\d{1,2})[-/](\d{1,2})", texto)
+
+    match = re.search(r"(\d{1,2})[-/](\d{1,2})", str(valor))
     if match:
         try:
-            dia, mes = int(match.group(1)), int(match.group(2))
-            return datetime(2026, mes, dia)
+            return datetime(2026, int(match.group(2)), int(match.group(1)))
         except:
             return None
     return None
 
-# Envia o actualiza los datos en la API de Strapi
+
 def guardar_en_strapi(reg):
     fecha_iso = reg["OBJ_FECHA"].strftime("%Y-%m-%d")
+
     payload = {
         "data": {
             "preContactos": reg["PRE_CONTACTOS"],
@@ -95,41 +102,84 @@ def guardar_en_strapi(reg):
     }
 
     try:
-        check_url = f"{API_URL_GLOBALS}?filters[fecha][$eq]={fecha_iso}&filters[sucursal][documentId][$eq]={DOC_ID_SUCURSAL}"
-        res_get = session.get(check_url)
-        existente = res_get.json().get("data", [])
+        url = f"{API_URL_GLOBALS}?filters[fecha][$eq]={fecha_iso}&filters[sucursal][documentId][$eq]={DOC_ID_SUCURSAL}"
+        res_get = session.get(url)
 
-        if existente:
-            doc_id = existente[0].get("documentId")
-            res = session.put(f"{API_URL_GLOBALS}/{doc_id}", json=payload)
-        else:
-            res = session.post(API_URL_GLOBALS, json=payload)
+        if not res_get.ok:
+            print("Error GET:", res_get.text)
+            return
 
-        if not res.ok:
-            print(f"Error {res.status_code}: {res.text}")
+        data = res_get.json().get("data", [])
+
+        # ===============================
+        # 🔹 SI NO EXISTE → CREAR SIEMPRE
+        # ===============================
+        if not data:
+            res_post = session.post(API_URL_GLOBALS, json=payload)
+
+            if not res_post.ok:
+                print("Error POST:", res_post.text)
+            else:
+                print("Creado:", fecha_iso)
+
+            return
+
+        # ===============================
+        # 🔹 SI EXISTE → VALIDAR CAMBIOS
+        # ===============================
+        actual = data[0]
+        doc_id = actual["documentId"]
+
+        cambios = False
+
+        for campo, nuevo_valor in payload["data"].items():
+
+            if campo not in actual:
+                continue
+
+            actual_valor = actual[campo]
+
+            if isinstance(nuevo_valor, (int, float)):
+
+                # ❌ NO permitir bajar valores
+                if nuevo_valor < actual_valor:
+                    payload["data"][campo] = actual_valor
+
+                # ✔ detectar si hubo cambio real
+                if nuevo_valor > actual_valor:
+                    cambios = True
+
+            else:
+                if nuevo_valor != actual_valor:
+                    cambios = True
+
+        # ❌ Si no hay cambios reales → NO hacer PUT
+        if not cambios:
+            print("Sin cambios:", fecha_iso)
+            return
+
+        res_put = session.put(f"{API_URL_GLOBALS}/{doc_id}", json=payload)
+
+        if not res_put.ok:
+            print("Error PUT:", res_put.text)
         else:
-            print(f"Procesado: {fecha_iso}")
+            print("Actualizado:", fecha_iso)
+
     except Exception as e:
-        print(f"Error: {e}")
-
-# Lee los datos de las celdas de Excel y valida si encontro el dia objetivo
+        print("Error guardando:", e)
 def extraer_bloque_posicional(ws, dia_inicio, dia_limite):
     data_range = ws.Range(ws.Cells(6, 1), ws.Cells(12, 65)).Value
-    dia_fin = dia_limite if dia_inicio >= 22 else min(dia_inicio + 6, dia_limite)
-    encontrado_objetivo = False
-    encontrados_total = 0
 
-    for i in range(len(data_range)):
-        fila_data = data_range[i]
-        fecha = convertir_fecha(fila_data[8])
+    dia_fin = dia_limite if dia_inicio >= 22 else min(dia_inicio + 6, dia_limite)
+
+    for fila in data_range:
+        fecha = convertir_fecha(fila[8])
+
         if fecha and dia_inicio <= fecha.day <= dia_fin:
-            if fecha.day == dia_inicio:
-                encontrado_objetivo = True
-            
+
             def leer(col):
-                v = fila_data[col - 1]
                 try:
-                    return int(float(v)) if v is not None else 0
+                    return int(float(fila[col-1])) if fila[col-1] else 0
                 except:
                     return 0
 
@@ -149,35 +199,18 @@ def extraer_bloque_posicional(ws, dia_inicio, dia_limite):
                 "ENTREGAS": leer(65),
                 "DESEMBOLSOS": leer(63),
             }
+
             guardar_en_strapi(registro)
-            encontrados_total += 1
 
-    print(f"Bloque {dia_inicio}: {encontrados_total} procesados.")
-    return encontrado_objetivo
 
-# Automatiza la navegacion del calendario mediante teclado
-def hilo_teclado(dia, ajuste_tabs=0):
-    pythoncom.CoInitialize()
-    try:
-        shell = win32com.client.Dispatch("WScript.Shell")
-        time.sleep(2.5)
-        if shell.AppActivate("CALENDARIO") or shell.AppActivate("Microsoft Excel"):
-            pestañas = {1: 0, 8: 7, 15: 14, 22: 21, 29: 28}
-            saltos = pestañas.get(dia, 0) + ajuste_tabs
-            shell.SendKeys("{TAB 4}")
-            if saltos > 0:
-                shell.SendKeys(f"{{TAB {saltos}}}")
-            shell.SendKeys("{ENTER}")
-            time.sleep(1.0)
-            shell.SendKeys("%{F4}")
-    finally:
-        pythoncom.CoUninitialize()
-
-# Orquestador principal del proceso
 def ejecutar():
+    print("Entrando ejecutar")
+
     if not obtener_configuracion_sucursal():
         return
+
     if not os.path.exists(NOMBRE_ARCHIVO):
+        print("No existe archivo")
         return
 
     excel = win32com.client.DispatchEx("Excel.Application")
@@ -187,6 +220,8 @@ def ejecutar():
     try:
         wb = excel.Workbooks.Open(NOMBRE_ARCHIVO)
         ws = wb.Sheets("Reportes")
+
+        # TUS MACROS INTACTAS
         try:
             excel.Application.Run("MostrarRangoCALENDARIO")
             excel.Application.Run("CambiarColorAzul_Boton6")
@@ -195,40 +230,65 @@ def ejecutar():
         except:
             pass
 
-        puntos_inicio = [1, 8, 15, 22]
-        if DIA_LIMITE >= 29:
-            puntos_inicio.append(29)
+        raw_f = str(ws.Cells(2, 185).Value).replace("*", "").strip()
+        f_base = datetime.strptime(raw_f, "%d-%m-%Y")
 
-        for inicio in puntos_inicio:
-            if inicio > DIA_LIMITE:
+        anio = f_base.year
+        mes = f_base.month
+
+        primer_dia = datetime(anio, mes, 1).weekday()
+        offset = (primer_dia + 1) % 7
+
+        bloques = [1, 8, 15, 22]
+        if DIA_LIMITE >= 29:
+            bloques.append(29)
+
+        for i, dia in enumerate(bloques):
+            if dia > DIA_LIMITE:
                 continue
-            
-            exito = False
-            intentos_tabs = 0
-            
-            # Intenta hasta encontrar el dia correcto ajustando tabs si es necesario
-            while not exito and intentos_tabs < 8:
-                print(f"--- Intentando Bloque dia {inicio} (Ajuste TAB: {intentos_tabs}) ---")
-                t = threading.Thread(target=hilo_teclado, args=(inicio, intentos_tabs))
-                t.start()
+
+            tabs = offset + (i * 7)
+
+            def hilo():
+                pythoncom.CoInitialize()
                 try:
-                    excel.Application.Run("MostrarCalendario")
-                except:
-                    pass
-                t.join()
-                time.sleep(2.0)
-                
-                exito = extraer_bloque_posicional(ws, inicio, DIA_LIMITE)
-                intentos_tabs += 1
-                
+                    shell = win32com.client.Dispatch("WScript.Shell")
+                    time.sleep(2.5)
+
+                    if shell.AppActivate("CALENDARIO") or shell.AppActivate("Microsoft Excel"):
+                        shell.SendKeys("{TAB 4}")
+                        if tabs > 0:
+                            shell.SendKeys(f"{{TAB {tabs}}}")
+                        shell.SendKeys("{ENTER}")
+                        time.sleep(1)
+                        shell.SendKeys("%{F4}")
+                finally:
+                    pythoncom.CoUninitialize()
+
+            t = threading.Thread(target=hilo)
+            t.start()
+
+            try:
+                excel.Application.Run("MostrarCalendario")
+            except:
+                pass
+
+            t.join()
+            time.sleep(2)
+
+            extraer_bloque_posicional(ws, dia, DIA_LIMITE)
+
         wb.Save()
+
     finally:
         try:
             wb.Close(False)
         except:
             pass
+
         excel.Quit()
         gc.collect()
+
 
 if __name__ == "__main__":
     ejecutar()

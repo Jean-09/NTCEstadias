@@ -21,12 +21,18 @@ def correr():
     print(token)
 
     comando = f'python "{script_path}" {dia} "{token}" "{sucursal}"'
-
+    print(f"DEBUG: Ejecutando comando: {comando}")
     def ejecutar_script():
-        subprocess.run(comando, shell=True)
+            resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
+            if resultado.returncode != 0:
+                    print("ERROR EN EL SCRIPT:")
+                    print(resultado.stderr)
+            else:
+                    print("SALIDA DEL SCRIPT:")
+                    print(resultado.stdout)
 
-    threading.Thread(target=ejecutar_script).start()
 
+    ejecutar_script()
     return jsonify({"status": "ok"}), 200
 
 @app.route('/ejecutar-gerente', methods=['POST'])

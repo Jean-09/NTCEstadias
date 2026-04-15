@@ -103,13 +103,13 @@ getApvPorGerente(gerente: string): number {
         buttons: ['OK']
       });
       await alert.present();
-      return; // Detiene la ejecución si no es válido
+      return; 
     }
     try {
 
-      const response = await this.api.ExtraerDatosGerente(this.diaLimite, this.sucursal.Sucursal);
+      await this.api.ExtraerDatosGerente(this.diaLimite, this.sucursal.Sucursal);
+
       await this.getGlobal();
-      return response.data;
 
     } catch (error) {
       throw error;

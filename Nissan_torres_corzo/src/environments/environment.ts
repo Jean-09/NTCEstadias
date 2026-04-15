@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  urlapi: 'https://dts58w59-1337.usw3.devtunnels.ms/api'
+  urlapi: 'http://localhost:1337/api'
 };
 
 /*

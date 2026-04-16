@@ -4,6 +4,7 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
 import { AlertController } from '@ionic/angular';
+import { Sucursales } from 'src/app/service/sucursales';
 
 
 @Component({
@@ -23,18 +24,129 @@ export class GlobalGerentePage implements OnInit {
 
 
 
-  constructor(private api: ExcelService, private act: ActivatedRoute, private alertCtrl: AlertController) {
+  constructor(private api: ExcelService, private apiSuc: Sucursales, private act: ActivatedRoute, private alertCtrl: AlertController) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
   async ngOnInit() {
     await this.getSucursal();
+    await this.getSucursales();
     await this.getapv();
     await this.getGlobal();
     this.actualizarSemanal();
     this.agruparPorMes();
   }
+  // =========================
+  // CRUD TABLA NUM_APV
+  // =========================
 
+  apvData: any[] = [];
+  sucursales: any[] = [];
+
+  modalApv = false;
+  modoEdicion = false;
+
+  formApv = {
+    id: null,
+    gerente: '',
+    sucursal: '',
+    num_apv: 0
+  };
+
+  // NORMALIZAR Ñ → N
+  normalizarTexto(texto: string): string {
+    if (!texto) return '';
+    return texto
+      .replace(/ñ/g, 'n')
+      .replace(/Ñ/g, 'N');
+  }
+
+  // ABRIR MODAL
+  abrirModalApv() {
+    this.modalApv = true;
+    this.getApv();
+    this.obtenerSucursales();
+  }
+
+  // CERRAR
+  cerrarModalApv() {
+    this.modalApv = false;
+    this.resetForm();
+  }
+
+  // RESET
+  resetForm() {
+    this.formApv = {
+      id: null,
+      gerente: '',
+      sucursal: '',
+      num_apv: 0
+    };
+    this.modoEdicion = false;
+  }
+
+
+  // CREAR
+  async crearApv() {
+    try {
+
+      const payload = {
+        gerente: this.normalizarTexto(this.formApv.gerente),
+        sucursal: this.formApv.sucursal,
+        num_apv: Number(this.formApv.num_apv)
+      };
+
+      await this.apiSuc.createApv(payload);
+
+      await this.getGlobal();
+      await this.getapv();
+      this.resetForm();
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // EDITAR
+  editarApv(item: any) {
+    this.formApv = {
+      id: item.id,
+      gerente: item.gerente,
+      sucursal: item.sucursal,
+      num_apv: item.num_apv
+    };
+    this.modoEdicion = true;
+  }
+
+  // ACTUALIZAR
+  async actualizarApv() {
+    try {
+
+      const payload = {
+        gerente: this.normalizarTexto(this.formApv.gerente),
+        sucursal: this.formApv.sucursal,
+        num_apv: Number(this.formApv.num_apv)
+      };
+
+      await this.apiSuc.updateApv(this.formApv.id, payload);
+
+      await this.obtenerApv();
+      this.resetForm();
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // BORRAR
+  async eliminarApv(id: number) {
+    try {
+      await this.apiSuc.deleteApv(id);
+      await this.obtenerApv();
+    } catch (err) {
+      console.error(err);
+    }
+  }
   async getapv() {
 
     await this.api.getApvGerente(this.id).then(res => {
@@ -50,25 +162,25 @@ export class GlobalGerentePage implements OnInit {
   }
 
   normalizarNombre(nombre: string): string {
-  return (nombre || '')
-    .toUpperCase()
-    .trim()
-    .replace(/\s+/g, ' ');
-}
+    return (nombre || '')
+      .toUpperCase()
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
 
-getApvPorGerente(gerente: string): number {
+  getApvPorGerente(gerente: string): number {
 
-  const cleanGerente = (gerente || '')
-    .replace(/\s+/g, ' ')   // elimina dobles espacios
-    .trim()
-    .toUpperCase();
+    const cleanGerente = (gerente || '')
+      .replace(/\s+/g, ' ')   // elimina dobles espacios
+      .trim()
+      .toUpperCase();
 
-  const key = Object.keys(this.apvPorGerente).find(k =>
-    k.replace(/\s+/g, ' ').trim().toUpperCase() === cleanGerente
-  );
+    const key = Object.keys(this.apvPorGerente).find(k =>
+      k.replace(/\s+/g, ' ').trim().toUpperCase() === cleanGerente
+    );
 
-  return this.apvPorGerente[key || ''] || 0;
-}
+    return this.apvPorGerente[key || ''] || 0;
+  }
 
   actualizarSemanal() {
     this.filasPrincipales.forEach(f => {
@@ -94,6 +206,18 @@ getApvPorGerente(gerente: string): number {
     }
   }
 
+  sucursales: any[] = [];
+
+  async getSucursales() {
+    try {
+      const res = await this.api.getSucursales();
+      this.sucursales = res.data;
+      console.log(this.sucursales)
+    } catch (error) {
+
+    }
+  }
+
   async dispararAutomatizacion() {
 
     if (!this.diaLimite || this.diaLimite < 1 || this.diaLimite > 31) {
@@ -103,7 +227,7 @@ getApvPorGerente(gerente: string): number {
         buttons: ['OK']
       });
       await alert.present();
-      return; 
+      return;
     }
     try {
 

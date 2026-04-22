@@ -3,7 +3,7 @@ import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
-import { AlertController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-global-sucursal',
@@ -23,7 +23,7 @@ export class GlobalSucursalPage implements OnInit {
 
 
 
-  constructor(private api: ExcelService, private act: ActivatedRoute,private alertCtrl: AlertController) {
+  constructor(private api: ExcelService, private act: ActivatedRoute, private alertCtrl: AlertController, private toastcontroller: ToastController) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -52,7 +52,7 @@ export class GlobalSucursalPage implements OnInit {
 
     })
       .catch(err => {
-        console.error(err)
+        this.presentAlert('Error', 'Hubo un problema al cargar la información de los apv.');
       });
   }
 
@@ -66,13 +66,13 @@ export class GlobalSucursalPage implements OnInit {
     });
   }
 
-  diaLimite:number = 0;
+  diaLimite: number = 0;
 
   async dispararAutomatizacion() {
     if (!this.diaLimite || this.diaLimite < 1 || this.diaLimite > 31) {
       const alert = await this.alertCtrl.create({
-        header: 'Error de Configuración',
-        message: 'Por favor, ingresa un día válido entre 1 y 31 para procesar el reporte.',
+        header: 'Día No Válido',
+        message: 'El día debe estar entre 1 y 31 para poder extraer los datos correctamente.',
         buttons: ['OK']
       });
       await alert.present();
@@ -82,25 +82,56 @@ export class GlobalSucursalPage implements OnInit {
       await this.api.diaLimite(this.diaLimite, this.sucursal);
 
       await this.getGlobal();
+      this.presentToast('¡Datos actualizados con éxito! El reporte global se ha refrescado.', 'success');
 
     } catch (error) {
-      console.error('Error en el servicio Nissan:', error);
+      const alert = await this.alertCtrl.create({
+        header: 'Error de Conexión',
+        message: 'No se pudieron extraer los datos del servidor de Nissan. Inténtalo más tarde.',
+        buttons: ['OK']
+      });
       throw error;
     }
   }
 
+  objectKeys(obj: any): string[] {
+    return Object.keys(obj);
+  }
+
+  async cambiarMes() {
+    this.paginaActual = 0;
+
+    await this.getGlobal();
+
+    if (this.reportesMesActual.length === 0) {
+      this.presentToast('Este mes no tiene datos', 'warning');
+    }
+  }
 
 
   agruparPorMes() {
     this.reportesPorMes = {};
 
-    for (let r of this.Global) {
-      // CORRECCIÓN: Dividir la cadena manualmente para evitar desfase de UTC
-      const partes = r.fecha.split('-'); // ["2026", "04", "01"]
-      const anio = partes[0];
-      const mes = partes[1].replace(/^0/, ''); // Quita el cero inicial (ej: "04" -> "4")
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mesActualNum = hoy.getMonth() + 1;
 
-      const claveMes = `${anio}-${mes}`;
+    // 🔥 generar meses con 0
+    for (let m = 1; m <= mesActualNum; m++) {
+      const mesFormateado = String(m).padStart(2, '0');
+      const clave = `${anio}-${mesFormateado}`;
+      this.reportesPorMes[clave] = [];
+    }
+
+    // 🔥 llenar con datos
+    for (let r of this.Global) {
+      if (!r.fecha) continue;
+
+      const partes = r.fecha.split('-'); // "2026-04-01"
+      const anioData = partes[0];
+      const mesData = partes[1]; // YA viene "04"
+
+      const claveMes = `${anioData}-${mesData}`;
 
       if (!this.reportesPorMes[claveMes]) {
         this.reportesPorMes[claveMes] = [];
@@ -109,7 +140,20 @@ export class GlobalSucursalPage implements OnInit {
       this.reportesPorMes[claveMes].push(r);
     }
 
-    // ... resto del código (meses Actual, etc)
+    // 🔥 ORDENAR
+    this.reportesPorMes = Object.keys(this.reportesPorMes)
+      .sort()
+      .reduce((acc: any, key) => {
+        acc[key] = this.reportesPorMes[key];
+        return acc;
+      }, {});
+
+    // 🔥 asegurar mes actual válido
+    const mesActualClave = `${anio}-${String(mesActualNum).padStart(2, '0')}`;
+
+    if (!this.mesActual || !this.reportesPorMes[this.mesActual]) {
+      this.mesActual = mesActualClave;
+    }
   }
 
   get reportesMesActual() {
@@ -119,6 +163,7 @@ export class GlobalSucursalPage implements OnInit {
 
   async exportarExcelmes() {
     const workbook = new ExcelJS.Workbook();
+    this.presentToast('Generando archivo Excel... por favor espera.', 'primary');
 
     // Se inicia en 1 para omitir el primer elemento de this.Global
     for (let i = 1; i < this.Global.length; i++) {
@@ -210,6 +255,7 @@ export class GlobalSucursalPage implements OnInit {
     // Generar y guardar archivo
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    this.presentToast('Reporte de ${this.sucursal} exportado correctamente.', 'success');
     saveAs(blob, `Reporte_Global_${this.sucursal}.xlsx`);
   }
 
@@ -255,10 +301,18 @@ export class GlobalSucursalPage implements OnInit {
   Global: any[] = [];
 
   async getGlobal() {
+
+    if (!this.mesActual) {
+      const hoy = new Date();
+      const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+      const anio = hoy.getFullYear();
+      this.mesActual = `${anio}-${mes}`; // mes ya viene con 0
+    }
     try {
 
-      const res = await this.api.getDataGlobal(this.id);
-      const datos = res.data.data;
+      const res = await this.api.getDataGlobal(this.id, this.mesActual);
+      const datos = res.data;
+      console.log('Datos Global obtenidos:', datos);
       let datosProcesados = datos.map((registro: any) => {
         if (!registro.fecha) return { ...registro, DIA_HABIL: 0 };
 
@@ -288,8 +342,20 @@ export class GlobalSucursalPage implements OnInit {
       }
 
     } catch (error) {
-      console.error("Error al obtener datos:", error);
+      console.log(error);
+      const alert = await this.alertCtrl.create({
+        header: 'Error de Datos',
+        message: 'Hubo un problema al cargar la información de la sucursal.',
+        buttons: ['OK']
+      });
     }
+  }
+
+  getMesActualFormato(): string {
+    const hoy = new Date();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const anio = hoy.getFullYear();
+    return `${anio}-${mes}`; // "04-2026"
   }
 
   getRealDelDia(concepto: string, g: any): number {
@@ -625,11 +691,25 @@ export class GlobalSucursalPage implements OnInit {
 
 
   get reporteActual() {
-    return this.Global[this.paginaActual];
+    const data = this.reportesMesActual;
+
+    if (!data || data.length === 0) return null;
+
+    // 🔥 Ajuste automático del índice
+    if (this.paginaActual >= data.length) {
+      this.paginaActual = data.length - 1;
+    }
+
+    if (this.paginaActual < 0) {
+      this.paginaActual = 0;
+    }
+
+    return data[this.paginaActual];
   }
 
   get totalPaginas(): number {
-    return this.Global.length > 0 ? this.Global.length - 1 : 0;
+    const data = this.reportesMesActual;
+    return data.length > 0 ? data.length - 1 : 0;
   }
 
   paginaAnterior() {
@@ -650,5 +730,25 @@ export class GlobalSucursalPage implements OnInit {
 
   irAUltima() {
     this.paginaActual = this.totalPaginas;
+  }
+
+  async presentAlert(header: string, msg: string) {
+    const alert = await this.alertCtrl.create({
+      header: header,
+      message: msg,
+      buttons: ['OK'],
+      mode: 'ios'
+    });
+    await alert.present();
+  }
+
+  async presentToast(message: string, color: string = 'dark') {
+    const toast = await this.toastcontroller.create({
+      message,
+      duration: 2500,
+      position: 'middle',
+      color,
+    });
+    toast.present();
   }
 }

@@ -3,6 +3,7 @@ import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
+import { AlertController, ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-apv',
@@ -30,7 +31,7 @@ export class APVPage implements OnInit {
     { nombre: 'DESEMBOLSADAS', key: 'desenbolsadas' },
     { nombre: 'ENTREGAS', key: 'entregas' }
   ];
-  constructor(private api: ExcelService, private act: ActivatedRoute) {
+  constructor(private api: ExcelService, private act: ActivatedRoute, private alertCtrl: AlertController, private toastCtrl: ToastController) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -42,31 +43,44 @@ export class APVPage implements OnInit {
   async getSucursal() {
     try {
       const res = await this.api.getBySucursales(this.id);
-      this.sucursal = res.data[0].Sucursal;
+      if (res.data && res.data.length > 0) {
+        this.sucursal = res.data[0].Sucursal;
+      } else {
+        await this.presentAlert('Error', 'No se encontró la información de la sucursal.');
+      }
     } catch (error) {
-      console.error('Error al obtener sucursal:', error);
+      await this.presentAlert('Error de Conexión', 'No se pudo obtener la sucursal desde el servidor.');
     }
   }
 
-  async dispararAutomatizacion() {
-    try {
-      await this.api.ExtraerDatosApv(this.diaLimite, this.sucursal);
-
-      await this.getApv();
-
-    } catch (error) {
-      console.error('Error en el servicio Nissan:', error);
-      throw error;
-    }
-  }
-
-  // Obtiene datos desde API
   getApv() {
     this.api.getApv(this.id).then((res: any) => {
       this.apvData = res.data;
+      if (this.apvData.length === 0) {
+        this.presentToast('No hay registros de APV para esta sucursal', 'primary');
+      }
       this.filtrarPorGerente(this.apvData);
     }).catch((error: any) => {
+      this.presentAlert('Error', 'Fallo al cargar los datos de los vendedores.');
     });
+  }
+
+  async dispararAutomatizacion() {
+    // Validación de campo vacío
+    if (!this.diaLimite) {
+      await this.presentAlert('Campo Requerido', 'Por favor, selecciona una fecha límite antes de continuar.');
+      return;
+    }
+
+    try {
+      await this.presentToast('Iniciando extracción de datos...', 'primary');
+      await this.api.ExtraerDatosApv(this.diaLimite, this.sucursal);
+      await this.getApv();
+      await this.presentToast('Datos actualizados correctamente', 'success');
+    } catch (error) {
+      console.error('Error en el servicio Nissan:', error);
+      await this.presentAlert('Error de Sincronización', 'No se pudieron extraer los datos de Nissan. Intenta de nuevo.');
+    }
   }
 
   // Agrupa datos por gerente
@@ -340,6 +354,7 @@ export class APVPage implements OnInit {
 
   async exportarExcel() {
     const workbook = new ExcelJS.Workbook();
+    await this.presentToast('Generando archivo Excel, por favor espera...', 'primary');
 
     for (const nombreGerente of Object.keys(this.paginas)) {
       // Recalcular semáforos para el gerente actual de la iteración
@@ -448,9 +463,9 @@ export class APVPage implements OnInit {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
+    await this.presentToast('¡Excel exportado con éxito!');
     saveAs(new Blob([buffer]), `Reporte_APV_${this.sucursal}.xlsx`);
 
-    // Restaurar visualización en la App
     this.procesarSemaforos(this.gerenteSeleccionado);
   }
 
@@ -469,5 +484,25 @@ export class APVPage implements OnInit {
         celda.font = { color: { argb: estilo['color'].replace('#', 'FF').toUpperCase() }, bold: true };
       }
     }
+  }
+
+  async presentAlert(header: string, msg: string) {
+    const alert = await this.alertCtrl.create({
+      header: header,
+      message: msg,
+      buttons: ['OK'],
+      mode: 'ios'
+    });
+    await alert.present();
+  }
+
+  async presentToast(message: string, color: string = 'dark') {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2500,
+      position: 'middle',
+      color,
+    });
+    toast.present();
   }
 }

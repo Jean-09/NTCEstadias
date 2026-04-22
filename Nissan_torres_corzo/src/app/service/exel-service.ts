@@ -61,12 +61,38 @@ export class ExcelService {
     );
   }
 
-  async getDataGlobal(id: any) {
-    return await axios.get(
-      `${this.url}/globals?filters[sucursal][documentId][$eq]=${id}&filters[Gerente][$null]=true&pagination[pageSize]=1000`,
-      this.headers()
-    );
+async getDataGlobal(id: any, mes: any) {
+
+  console.log('Mes recibido:', mes); // "04-2026"
+
+  // 🔥 separar mes y año
+  const [anioStr, mesStr] = mes.split('-');
+
+  const mesNum = Number(mesStr);
+  const anio = Number(anioStr);
+
+  // validar por si acaso
+  if (!mesNum || !anio) {
+    console.error('Mes inválido:', mes);
+    return;
   }
+
+  // ✅ formato correcto
+  const fechaInicio = `${anio}-${mesStr}-01`;
+
+  const ultimoDia = new Date(anio, mesNum, 0).getDate();
+
+  const fechaFin = `${anio}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
+
+  console.log('Fechas calculadas:', fechaInicio, fechaFin);
+
+const res = await axios.get(
+  `${this.url}/globals?filters[sucursal][documentId][$eq]=${id}&filters[Gerente][$null]=true&filters[fecha][$gte]=${fechaInicio}&filters[fecha][$lte]=${fechaFin}&sort=fecha:asc`,
+  this.headers()
+);
+
+  return res.data;
+}
 
   async getApv(Sucursal: any) {
     let res = await axios.get(

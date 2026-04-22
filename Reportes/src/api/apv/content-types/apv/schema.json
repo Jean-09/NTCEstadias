@@ -19,7 +19,8 @@
       "enum": [
         "GLOBAL",
         "GERENTE",
-        "VENDEDOR"
+        "VENDEDOR",
+        "TRIMESTRAL"
       ]
     },
     "Fecha_inicio": {

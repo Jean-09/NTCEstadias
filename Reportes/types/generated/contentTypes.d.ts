@@ -456,7 +456,7 @@ export interface ApiApvApv extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     sucursal: Schema.Attribute.Relation<'manyToOne', 'api::sucursal.sucursal'>;
     tipo_registro: Schema.Attribute.Enumeration<
-      ['GLOBAL', 'GERENTE', 'VENDEDOR']
+      ['GLOBAL', 'GERENTE', 'VENDEDOR', 'TRIMESTRAL']
     >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &

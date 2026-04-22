@@ -3,7 +3,7 @@ import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { ActivatedRoute } from '@angular/router';
-import { AlertController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 import { Sucursales } from 'src/app/service/sucursales';
 
 
@@ -24,7 +24,7 @@ export class GlobalGerentePage implements OnInit {
 
 
 
-  constructor(private api: ExcelService, private apiSuc: Sucursales, private act: ActivatedRoute, private alertCtrl: AlertController) {
+  constructor(private api: ExcelService, private apiSuc: Sucursales, private act: ActivatedRoute, private alertCtrl: AlertController, private toastcontroller: ToastController) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -64,8 +64,8 @@ export class GlobalGerentePage implements OnInit {
   // ABRIR MODAL
   abrirModalApv() {
     this.modalApv = true;
-    this.getApv();
-    this.obtenerSucursales();
+    this.getapv();
+    this.getSucursales();
   }
 
   // CERRAR
@@ -101,9 +101,10 @@ export class GlobalGerentePage implements OnInit {
       await this.getGlobal();
       await this.getapv();
       this.resetForm();
-
+      this.presentToast('Registro APV creado con éxito', 'success');
     } catch (err) {
       console.error(err);
+      this.presentAlert('Error', 'Intente nuevamente');
     }
   }
 
@@ -130,23 +131,39 @@ export class GlobalGerentePage implements OnInit {
 
       await this.apiSuc.updateApv(this.formApv.id, payload);
 
-      await this.obtenerApv();
+      await this.getapv();
       this.resetForm();
-
+      this.presentToast('Datos actualizados correctamente', 'success');
     } catch (err) {
       console.error(err);
+      this.presentAlert('Error', 'Intente nuevamente');
     }
   }
 
   // BORRAR
   async eliminarApv(id: number) {
-    try {
-      await this.apiSuc.deleteApv(id);
-      await this.obtenerApv();
-    } catch (err) {
-      console.error(err);
-    }
+    const alert = await this.alertCtrl.create({
+      header: 'Confirmar eliminación',
+      message: '¿Estás seguro de borrar este APV?',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Eliminar',
+          handler: async () => {
+            try {
+              await this.apiSuc.delApv(id);
+              await this.getapv();
+              this.presentToast('Registro eliminado', 'danger');
+            } catch (err) {
+              this.presentAlert('Error', 'No se pudo eliminar el registro');
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
   }
+
   async getapv() {
 
     await this.api.getApvGerente(this.id).then(res => {
@@ -206,7 +223,6 @@ export class GlobalGerentePage implements OnInit {
     }
   }
 
-  sucursales: any[] = [];
 
   async getSucursales() {
     try {
@@ -362,6 +378,7 @@ export class GlobalGerentePage implements OnInit {
     // Generar y guardar archivo
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    this.presentToast('Generando archivo Excel...', 'dark');
     saveAs(blob, `Reporte_Global_${this.gerenteSeleccionado}.xlsx`);
   }
 
@@ -804,7 +821,7 @@ export class GlobalGerentePage implements OnInit {
       'AUTORIZADAS': 2,
       'PEDIDO CON ANTICIPO': 2,
       'DEMOS': 4,
-      'ENTREGAS': 2,
+      // 'ENTREGAS': 2,
       'DESEMBOLSOS': 2
     };
 
@@ -875,4 +892,23 @@ export class GlobalGerentePage implements OnInit {
     this.paginaActual = 0;
   }
 
+  async presentAlert(header: string, msg: string) {
+    const alert = await this.alertCtrl.create({
+      header: header,
+      message: msg,
+      buttons: ['OK'],
+      mode: 'ios'
+    });
+    await alert.present();
+  }
+
+  async presentToast(message: string, color: string = 'dark') {
+    const toast = await this.toastcontroller.create({
+      message,
+      duration: 2500,
+      position: 'middle',
+      color,
+    });
+    toast.present();
+  }
 }

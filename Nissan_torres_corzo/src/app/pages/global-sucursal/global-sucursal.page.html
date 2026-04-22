@@ -38,7 +38,7 @@
       <ion-icon name="download-outline"></ion-icon>
     </button>
 
-    <div class="modern-card" *ngIf="Global.length > 0">
+    <div class="modern-card" *ngIf="reportesPorMes">
       <div class="card-header">
         <h3><ion-icon name="calendar-outline"></ion-icon> Navegación de Reportes</h3>
       </div>
@@ -49,20 +49,30 @@
               name="play-back"></ion-icon></ion-button>
           <ion-button fill="outline" color="primary" (click)="paginaAnterior()" [disabled]="paginaActual <= 1"><ion-icon
               name="chevron-back"></ion-icon></ion-button>
-          <span class="page-indicator">{{paginaActual}} / {{totalPaginas}} - {{ reporteActual.fecha | date:'dd/MM/yyyy' }}</span>
+          <span class="page-indicator">{{paginaActual}} / {{totalPaginas}} - {{ reporteActual?.fecha | date:'dd/MM/yyyy'
+            }}</span>
           <ion-button fill="outline" color="primary" (click)="paginaSiguiente()"
-            [disabled]="paginaActual >= Global.length - 1"><ion-icon name="chevron-forward"></ion-icon></ion-button>
+            [disabled]="paginaActual >= reportesMesActual.length - 1"><ion-icon
+              name="chevron-forward"></ion-icon></ion-button>
           <ion-button fill="outline" color="primary" (click)="irAUltima()"
-            [disabled]="paginaActual >= Global.length - 1"><ion-icon name="play-forward"></ion-icon></ion-button>
+            [disabled]="paginaActual >= reportesMesActual.length - 1"><ion-icon
+              name="play-forward"></ion-icon></ion-button>
         </div>
 
         <ion-item class="modern-input">
           <ion-label>Mes</ion-label>
-          <ion-select [(ngModel)]="mesActual" placeholder="Seleccione un mes...">
-            <ion-select-option *ngFor="let m of reportesPorMes | keyvalue" [value]="m.key">{{m.key}}</ion-select-option>
+          <ion-select [(ngModel)]="mesActual" (ionChange)="cambiarMes()">
+            <ion-select-option *ngFor="let m of objectKeys(reportesPorMes)" [value]="m">
+              {{ m }}
+            </ion-select-option>
           </ion-select>
         </ion-item>
       </div>
+    </div>
+    <div *ngIf="reportesMesActual.length === 0" class="sin-datos">
+      <ion-text color="medium">
+        <p>No hay datos para este mes</p>
+      </ion-text>
     </div>
 
     <div class="excel-frame" *ngIf="reporteActual && paginaActual !== 0">

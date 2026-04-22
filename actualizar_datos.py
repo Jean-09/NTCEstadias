@@ -12,6 +12,8 @@ import win32gui
 import win32process
 import gc
 
+xlDone = 0
+
 # ================= MUTEX =================
 mutex = win32event.CreateMutex(None, False, "Global\\ACTUALIZAR_DATOS_MUTEX")
 if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
@@ -24,7 +26,6 @@ TOKEN = sys.argv[3]
 SUCURSAL = sys.argv[4]
 
 ANIO_BASE = 2023
-
 API_BASE = "http://localhost:1337/api"
 API_URL_SUCURSALES = f"{API_BASE}/sucursals"
 
@@ -33,8 +34,8 @@ session.headers.update({"Authorization": TOKEN})
 
 NOMBRE_ARCHIVO = None
 
-# ================= STRAPI =================
 def obtener_archivo():
+    # Gestiona la localizacion de la plantilla desde la API
     global NOMBRE_ARCHIVO
     try:
         res = session.get(f"{API_URL_SUCURSALES}?filters[Sucursal][$eq]={SUCURSAL}")
@@ -49,8 +50,8 @@ def obtener_archivo():
         pass
     return False
 
-# ================= CONTROL EXCEL =================
 def esperar_excel(pid_excel):
+    # Monitorea el foco de la ventana de Excel
     while True:
         hwnd = win32gui.GetForegroundWindow()
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -58,42 +59,40 @@ def esperar_excel(pid_excel):
             return
         time.sleep(0.2)
 
-def esperar_listo(excel):
-    while True:
-        try:
-            if excel.Ready:
-                break
-        except:
-            pass
-        time.sleep(0.3)
-
 def cerrar_popup():
-    for _ in range(5):
-        pyautogui.press('enter')
-        time.sleep(0.2)
+    # Acciona el boton Aceptar de la alerta de finalizacion
+    pyautogui.press('enter')
+    time.sleep(0.5)
 
 def seleccionar_mes_anio():
-    # MES
+    # Interactua con el formulario para disparar la sincronizacion
     pyautogui.press('tab')
     pyautogui.press('up', presses=15)
     for _ in range(MES - 1):
         pyautogui.press('down')
 
-    # AÑO
     pyautogui.press('tab')
     pyautogui.press('up', presses=15)
     for _ in range(ANIO - ANIO_BASE):
         pyautogui.press('down')
 
-    # SINCRONIZAR
     pyautogui.press('tab')
     pyautogui.press('enter')
 
-# ================= MAIN =================
+def esperar_calculos(excel):
+    # Verifica que el motor de calculo haya terminado sus tareas
+    while True:
+        try:
+            if excel.CalculationState == xlDone and excel.Ready:
+                break
+        except:
+            pass
+        time.sleep(0.1)
+
 def ejecutar():
+    # Controla el flujo completo de apertura, actualizacion y guardado
     if not obtener_archivo():
-        print("❌ No se encontró plantilla")
-        return
+        sys.exit(1)
 
     excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = True
@@ -107,18 +106,16 @@ def ejecutar():
     _, pid_excel = win32process.GetWindowThreadProcessId(hwnd)
 
     excel.Application.Run("MostrarUserFormAGENCIAMESAÑO")
-
     esperar_excel(pid_excel)
-
+    
     seleccionar_mes_anio()
-
-    esperar_listo(excel)
+    esperar_calculos(excel)
+    
     cerrar_popup()
+    esperar_calculos(excel)
 
     wb.Save()
-
-    wb.Close(False)
-    excel.Quit()
+    
     gc.collect()
 
 if __name__ == "__main__":

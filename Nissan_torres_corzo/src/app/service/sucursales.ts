@@ -8,7 +8,7 @@ import { environment } from 'src/environments/environment.prod';
   providedIn: 'root',
 })
 export class Sucursales {
-  
+
   private url = environment.urlapi
   constructor() { }
 
@@ -23,12 +23,12 @@ export class Sucursales {
   }
 
   async putSucursal(id: any, data: any) {
-    let res = await axios.put(`${this.url}/sucursals/${id}`, {data}, this.headers());
+    let res = await axios.put(`${this.url}/sucursals/${id}`, { data }, this.headers());
     return res.data;
   }
 
   async createSucursal(data: any) {
-    let res = await axios.post(`${this.url}/sucursals`, {data}, this.headers());
+    let res = await axios.post(`${this.url}/sucursals`, { data }, this.headers());
     return res.data;
   }
 
@@ -38,12 +38,19 @@ export class Sucursales {
   }
 
   async createApv(data: any) {
-    let res = await axios.post(`${this.url}/numero-apvs`, {data}, this.headers());
+    let res = await axios.post(`${this.url}/numero-apvs`, { data }, this.headers());
     return res.data;
   }
 
   async updateApv(id: any, data: any) {
-    let res = await axios.put(`${this.url}/numero-apvs/${id}`, {data}, this.headers());
+    console.log(data)
+    let res = await axios.put(`${this.url}/numero-apvs/${id}`, { data }, this.headers());
+    console.log(res) 
+    return res.data;
+  }
+
+  async delApv(id: any) {
+    let res = await axios.delete(`${this.url}/numero-apvs/${id}`, this.headers());
     return res.data;
   }
 

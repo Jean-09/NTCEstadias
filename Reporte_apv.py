@@ -97,69 +97,97 @@ def ejecutar():
     excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = False
     excel.DisplayAlerts = False
+    excel.EnableEvents = False # CAMBIO: Debe estar en True para que las macros de los botones reaccionen
+    excel.AutomationSecurity = 1 
 
     try:
-        wb = excel.Workbooks.Open(os.path.abspath(NOMBRE_ARCHIVO))
+        wb = excel.Workbooks.Open(os.path.abspath(NOMBRE_ARCHIVO), UpdateLinks=0)
         ws = wb.Sheets(HOJA_NOMBRE)
-        raw_f = str(ws.Cells(2, 185).Value).replace("*", "").strip()
+
+        # 1. Preparar entorno
+        try:
+            excel.Application.Run("IrAReportes_SeguroConPwd")
+            excel.Application.Run("MostrarRangoTRIMESTRAXAPV")
+        except: pass
+
+        # 2. Configurar Fechas Base
+        celda_inicio = ws.Range("GC2")
+        # ... (lógica de validación de fecha que ya tienes)
+        
+        raw_f = str(celda_inicio.Value).replace("*", "").strip()
         f_base = datetime.strptime(raw_f, "%d-%m-%Y")
         f_ini_iso = f_base.replace(day=1).strftime("%Y-%m-%d")
         dias_corte = calcular_dias_corte(f_base.year, f_base.month, DIA_LIMITE_SOLICITADO)
 
-        gerentes = [str(c.Value).strip() for c in ws.Application.Range(ws.Range("FO15").Validation.Formula1) if c.Value]
+        # 3. Ciclo de Gerentes
+        form_g = ws.Range("FO15").Validation.Formula1
+        gerentes = [str(c.Value).strip() for c in ws.Application.Range(form_g) if c.Value]
 
         for g in gerentes:
             if "POR ASIGNAR" in g.upper() or not g: continue
-            ws.Cells(15, 171).Value = g
-
+            ws.Cells(15, 171).Value = g # Cambia Gerente
+            
             for d in dias_corte:
                 f_fin_iso = datetime(f_base.year, f_base.month, d).strftime("%Y-%m-%d")
-                ws.Cells(3, 185).Value = datetime(f_base.year, f_base.month, d).strftime("%d-%m-%Y") + "*"
+                ws.Range("GC3").Value = datetime(f_base.year, f_base.month, d).strftime("%d-%m-%Y") + "*"
                 
-                # --- EXTRACCIÓN DATOS MES ---
+                # --- PASO A: EXTRAER "MES" ---
                 try:
-                    for m in ["Boton9", "Boton11"]: excel.Application.Run(f"CambiarColorAzul_{m}")
+                    excel.Application.Run("CambiarColorAzul_Boton9")  # Global Mes
+                    excel.Application.Run("CambiarColorAzul_Boton11") # APV Mes
+                    excel.Calculate() # Forzar a Excel a actualizar celdas
+                    time.sleep(1)     # Pausa técnica para estabilidad
                 except: pass
+
+                data_mes_global = extraer_bloque(ws, 6)
+                data_mes_gerente = extraer_bloque(ws, 16)
                 
-                mes_global = extraer_bloque(ws, 6)
-                mes_gerente = extraer_bloque(ws, 16)
-                v_mes_list = []
+                # Vendedores (Mes)
+                v_list_mes = []
                 f_v, cv = 29, 0
                 while True:
                     nom = ws.Cells(f_v, 171).Value
                     if not nom or "TOTAL" in str(nom).upper(): break
-                    v_mes_list.append({"n": str(nom).strip(), "d": extraer_bloque(ws, f_v + 1)})
+                    v_list_mes.append({"n": str(nom).strip(), "d": extraer_bloque(ws, f_v + 1)})
                     cv += 1
                     f_v += 11 if cv == 2 else 10
 
-                # --- EXTRACCIÓN DATOS MADURACIÓN ---
+                # --- PASO B: EXTRAER "MADURACIÓN" ---
                 try:
-                    for m in ["Boton10", "Boton12"]: excel.Application.Run(f"CambiarColorAzul_{m}")
+                    excel.Application.Run("CambiarColorAzul_Boton10") # Global Maduracion
+                    excel.Application.Run("CambiarColorAzul_Boton12") # APV Maduracion
+                    excel.Calculate() # Forzar a Excel a actualizar celdas
+                    time.sleep(1)
                 except: pass
 
-                mad_global = extraer_bloque(ws, 6)
-                mad_gerente = extraer_bloque(ws, 16)
-                v_mad_dict = {}
+                data_mad_global = extraer_bloque(ws, 6)
+                data_mad_gerente = extraer_bloque(ws, 16)
+                
+                # Vendedores (Maduración)
+                v_dict_mad = {}
                 f_v, cv = 29, 0
                 while True:
                     nom = ws.Cells(f_v, 171).Value
                     if not nom or "TOTAL" in str(nom).upper(): break
-                    v_mad_dict[str(nom).strip()] = extraer_bloque(ws, f_v + 1)
+                    v_dict_mad[str(nom).strip()] = extraer_bloque(ws, f_v + 1)
                     cv += 1
                     f_v += 11 if cv == 2 else 10
 
-                # --- GUARDADO FINAL ---
                 base = {"Fecha_inicio": f_ini_iso, "Fecha_fin": f_fin_iso, "sucursal": DOC_ID_SUCURSAL}
                 
-                guardar_o_actualizar({**base, "tipo_registro": "GLOBAL", "Apv_nombre": "GLOBAL", "Gerente": "GLOBAL", "Mes": mes_global, "Maduracion": mad_global})
-                guardar_o_actualizar({**base, "tipo_registro": "GERENTE", "Gerente": g, "Apv_nombre": g, "Mes": mes_gerente, "Maduracion": mad_gerente})
-                
-                for v in v_mes_list:
-                    nom_v = v["n"]
-                    guardar_o_actualizar({**base, "tipo_registro": "VENDEDOR", "Gerente": g, "Apv_nombre": nom_v, "Mes": v["d"], "Maduracion": v_mad_dict.get(nom_v, v["d"])})
+                # Global
+                guardar_o_actualizar({**base, "tipo_registro": "GLOBAL", "Apv_nombre": "GLOBAL", "Gerente": "GLOBAL", 
+                                      "Mes": data_mes_global, "Maduracion": data_mad_global})
+                # Gerente
+                guardar_o_actualizar({**base, "tipo_registro": "GERENTE", "Gerente": g, "Apv_nombre": g, 
+                                      "Mes": data_mes_gerente, "Maduracion": data_mad_gerente})
+                # Vendedores
+                for v in v_list_mes:
+                    nombre = v["n"]
+                    guardar_o_actualizar({**base, "tipo_registro": "VENDEDOR", "Gerente": g, "Apv_nombre": nombre, 
+                                          "Mes": v["d"], "Maduracion": v_dict_mad.get(nombre, v["d"])})
 
-        wb.Save()
-        print("✅ Sincronización exitosa.")
+        print("Sincronización exitosa con distinción de Mes/Maduración.")
     finally:
         if 'wb' in locals(): wb.Close(False)
         excel.Quit()

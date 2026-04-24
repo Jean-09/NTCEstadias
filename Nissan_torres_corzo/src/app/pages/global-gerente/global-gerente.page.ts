@@ -2,9 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular';
 import { Sucursales } from 'src/app/service/sucursales';
+import { Login } from 'src/app/service/login';
 
 
 @Component({
@@ -24,7 +25,7 @@ export class GlobalGerentePage implements OnInit {
 
 
 
-  constructor(private api: ExcelService, private apiSuc: Sucursales, private act: ActivatedRoute, private alertCtrl: AlertController, private toastcontroller: ToastController) {
+  constructor(private api: ExcelService, private apiSuc: Sucursales, private act: ActivatedRoute, private alertCtrl: AlertController, private toastcontroller: ToastController, private login: Login, private router: Router) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -86,60 +87,6 @@ export class GlobalGerentePage implements OnInit {
   }
 
 
-  // CREAR
-  async crearApv() {
-    try {
-
-      const payload = {
-        gerente: this.normalizarTexto(this.formApv.gerente),
-        sucursal: this.formApv.sucursal,
-        num_apv: Number(this.formApv.num_apv)
-      };
-
-      await this.apiSuc.createApv(payload);
-
-      await this.getGlobal();
-      await this.getapv();
-      this.resetForm();
-      this.presentToast('Registro APV creado con éxito', 'success');
-    } catch (err) {
-      console.error(err);
-      this.presentAlert('Error', 'Intente nuevamente');
-    }
-  }
-
-  // EDITAR
-  editarApv(item: any) {
-    this.formApv = {
-      id: item.id,
-      gerente: item.gerente,
-      sucursal: item.sucursal,
-      num_apv: item.num_apv
-    };
-    this.modoEdicion = true;
-  }
-
-  // ACTUALIZAR
-  async actualizarApv() {
-    try {
-
-      const payload = {
-        gerente: this.normalizarTexto(this.formApv.gerente),
-        sucursal: this.formApv.sucursal,
-        num_apv: Number(this.formApv.num_apv)
-      };
-
-      await this.apiSuc.updateApv(this.formApv.id, payload);
-
-      await this.getapv();
-      this.resetForm();
-      this.presentToast('Datos actualizados correctamente', 'success');
-    } catch (err) {
-      console.error(err);
-      this.presentAlert('Error', 'Intente nuevamente');
-    }
-  }
-
   // BORRAR
   async eliminarApv(id: number) {
     const alert = await this.alertCtrl.create({
@@ -163,19 +110,64 @@ export class GlobalGerentePage implements OnInit {
     });
     await alert.present();
   }
+  listaApvGerentes: any[] = [];
 
   async getapv() {
+    try {
+      const res: any = await this.api.getApvGerente(this.id);
+      this.listaApvGerentes = res.data.data;
 
-    await this.api.getApvGerente(this.id).then(res => {
-      res.data.data.forEach((dato: any) => {
-        const gerente = this.normalizarNombre(dato.Gerente);
+      this.listaApvGerentes.forEach((dato: any) => {
+        const gerente = this.normalizarNombre(dato.gerente);
         this.apvPorGerente[gerente] = Number(dato.Num_apv || 0);
       });
+    } catch (err) {
+      this.presentToast('Error al cargar metas de APV', 'danger');
+    }
+  }
 
-    })
-      .catch(err => {
-        console.error(err)
-      });
+  async crearApv() {
+    try {
+      const payload = {
+        Gerente: this.normalizarNombre(this.formApv.gerente),
+        Num_apv: Number(this.formApv.num_apv),
+        sucursal: { connect: [this.id] } // Relación Strapi v5
+      };
+
+      await this.apiSuc.createApv(payload);
+      this.presentToast('Meta de APV asignada', 'success');
+      this.cerrarModalApv();
+      this.getapv();
+    } catch (err) {
+      this.presentAlert('Error', 'No se pudo crear el registro');
+    }
+  }
+
+  async actualizarApv() {
+    try {
+      const payload = {
+        gerente: this.normalizarNombre(this.formApv.gerente),
+        Num_apv: Number(this.formApv.num_apv)
+      };
+
+      await this.apiSuc.updateApv(this.formApv.id, payload);
+      this.presentToast('Cantidad de APV actualizada', 'primary');
+      this.cerrarModalApv();
+      this.getapv();
+      this.getGlobal();
+    } catch (err) {
+      this.presentAlert('Error', 'No se pudo actualizar la meta');
+    }
+  }
+
+  editarApv(item: any) {
+    this.formApv = {
+      id: item.documentId, // Crucial para Strapi v5
+      gerente: item.gerente,
+      num_apv: item.Num_apv,
+      sucursal: this.id
+    };
+    this.modoEdicion = true;
   }
 
   normalizarNombre(nombre: string): string {
@@ -186,7 +178,7 @@ export class GlobalGerentePage implements OnInit {
   }
 
   getApvPorGerente(gerente: string): number {
-
+    
     const cleanGerente = (gerente || '')
       .replace(/\s+/g, ' ')   // elimina dobles espacios
       .trim()
@@ -195,7 +187,6 @@ export class GlobalGerentePage implements OnInit {
     const key = Object.keys(this.apvPorGerente).find(k =>
       k.replace(/\s+/g, ' ').trim().toUpperCase() === cleanGerente
     );
-
     return this.apvPorGerente[key || ''] || 0;
   }
 
@@ -228,31 +219,25 @@ export class GlobalGerentePage implements OnInit {
     try {
       const res = await this.api.getSucursales();
       this.sucursales = res.data;
-      console.log(this.sucursales)
     } catch (error) {
 
     }
   }
 
+  // AUTOMATIZACIÓN (El botón de proceso de Excel)
   async dispararAutomatizacion() {
-
     if (!this.diaLimite || this.diaLimite < 1 || this.diaLimite > 31) {
-      const alert = await this.alertCtrl.create({
-        header: 'Error de Configuración',
-        message: 'Por favor, ingresa un día válido entre 1 y 31 para procesar el reporte.',
-        buttons: ['OK']
-      });
-      await alert.present();
+      this.presentAlert('Día Inválido', 'Ingresa un día entre 1 y 31 para que el script pueda procesar el archivo.');
       return;
     }
+
     try {
-
+      this.presentToast('Iniciando extracción de datos gerente...', 'dark');
       await this.api.ExtraerDatosGerente(this.diaLimite, this.sucursal.Sucursal);
-
+      this.presentAlert('Proceso Completado', 'Los datos del gerente han sido extraídos y sincronizados.');
       await this.getGlobal();
-
     } catch (error) {
-      throw error;
+      this.presentAlert('Fallo en Automatización', 'El script de Excel no respondió o el archivo no fue encontrado.');
     }
   }
 
@@ -489,7 +474,7 @@ export class GlobalGerentePage implements OnInit {
 
 
     } catch (e) {
-      console.error(e);
+      this.presentAlert('Error', 'No se pudieron cargar los datos globales del gerente');
     }
   }
   actualizarMeses() {
@@ -911,4 +896,14 @@ export class GlobalGerentePage implements OnInit {
     });
     toast.present();
   }
+    logout() {
+    try {
+      this.login.logout();
+      this.presentToast('Sesión cerrada', 'success');
+      this.router.navigate(['/login']);
+    } catch (error) {
+      this.presentToast('Error al cerrar sesión', 'danger');
+    }
+  }
+
 }

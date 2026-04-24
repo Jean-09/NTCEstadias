@@ -167,7 +167,8 @@ def ejecutar():
             excel.Application.Run("MostrarRangoCALENDARIO")
             excel.Application.Run("CambiarColorAzul_Boton6")
             excel.Application.Run("CambiarColorAzul_Boton1")
-            time.sleep(2)
+            excel.Application.Run("Modulo2.CambiarColorAzul_Boton13")
+            time.sleep(1)
         except:
             pass
 

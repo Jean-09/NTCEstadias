@@ -43,7 +43,7 @@ export class Sucursales {
   }
 
   async updateApv(id: any, data: any) {
-    console.log(data)
+    console.log('Actualizando APV con ID:', id, 'y datos:', data);
     let res = await axios.put(`${this.url}/numero-apvs/${id}`, { data }, this.headers());
     console.log(res) 
     return res.data;

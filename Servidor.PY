@@ -6,10 +6,6 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-import subprocess
-import threading
-
-
 @app.route("/ejecutar-reporte", methods=["POST"])
 def correr():
     data = request.json
@@ -18,22 +14,14 @@ def correr():
     token = request.headers.get("Authorization")
 
     script_path = os.path.join(os.path.dirname(__file__), "reporte_nissan.py")
-    
     comando = f'python "{script_path}" {dia} "{token}" "{sucursal}"'
     print(f"Ejecutando: {comando}")
 
     try:
         resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
-
         if resultado.returncode != 0:
-            print("Error en script:", resultado.stderr)
             return jsonify({"status": "error", "error": resultado.stderr}), 500
-
-        return jsonify({
-            "status": "ok", 
-            "message": "Extracción finalizada y datos guardados en Strapi"
-        }), 200
-
+        return jsonify({"status": "ok", "message": "Finalizado"}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -44,26 +32,39 @@ def correr_gerente():
     sucursal = data.get("sucursal", "Zacatecas")
     token = request.headers.get("Authorization")
 
-    # Asegúrate de que el nombre del archivo sea EXACTO al que tienes en la carpeta
     script_path = os.path.join(os.path.dirname(__file__), "reporte_global_gerente.py")
-
-    # Imprimimos el comando en la consola de Flask para que lo veas y lo puedas copiar/pegar
     comando = f'python "{script_path}" {dia} "{token}" "{sucursal}"'
-    print(f"DEBUG: Ejecutando comando: {comando}")
+    
+    print(f"DEBUG: Iniciando extracción pesada de Gerentes para {sucursal}...")
 
-    def ejecutar_script():
-        # Capturamos la salida para ver por qué no arranca
-        resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
-        if resultado.returncode != 0:
-            print("ERROR EN EL SCRIPT:")
-            print(resultado.stderr)
-        else:
-            print("SALIDA DEL SCRIPT:")
-            print(resultado.stdout)
+    try:
+        # Quitamos el Threading. Ahora Flask esperará aquí "eternamente" hasta que termine.
+        resultado = subprocess.run(
+            comando, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            check=True # Esto lanza una excepción si el código de salida no es 0
+        )
 
-    threading.Thread(target=ejecutar_script).start()
-    return jsonify({"status": "ok", "mensaje": "Hilo iniciado"}), 200
+        print("SALIDA GERENTE:")
+        print(resultado.stdout)
 
+        return jsonify({
+            "ok": True, 
+            "mensaje": f"Reporte de Gerentes para {sucursal} finalizado exitosamente"
+        }), 200
+
+    except subprocess.CalledProcessError as e:
+        print("ERROR EN EL SCRIPT DE GERENTE:")
+        print(e.stderr)
+        return jsonify({
+            "ok": False, 
+            "error": "Error interno en el script de Gerente",
+            "detalles": e.stderr
+        }), 500
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/ejecutar-apv", methods=["POST"])
 def correr_apv():
@@ -72,49 +73,39 @@ def correr_apv():
     sucursal = data.get("sucursal", "Zacatecas")
     token = request.headers.get("Authorization")
 
-    # Ruta al script de reporte APV
     script_path = os.path.join(os.path.dirname(__file__), "Reporte_apv.py")
-
-    # Construcción del comando con argumentos escapados
     comando = f'python "{script_path}" {dia} "{token}" "{sucursal}"'
-    print(f"DEBUG: Ejecutando reporte APV: {comando}")
+    
+    print(f"DEBUG: Iniciando reporte APV para {sucursal}. Esperando finalización...")
 
     try:
-        # Se elimina el Threading para que sea síncrono.
-        # Flask esperará aquí hasta que el script termine.
+        # Aquí Flask se detiene y espera a que el proceso termine por completo
         resultado = subprocess.run(
-            comando, shell=True, capture_output=True, text=True, check=True
+            comando, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            check=True  # Si el script truena, salta al except automáticamente
         )
 
-        # Si llega aquí, el proceso terminó con éxito (exit code 0)
-        print("SALIDA DEL SCRIPT APV:")
+        # Si llega aquí, es que terminó con éxito
+        print("SALIDA EXITOSA APV:")
         print(resultado.stdout)
 
-        return (
-            jsonify(
-                {
-                    "ok": True,
-                    "mensaje": f"Reporte APV para {sucursal} finalizado y guardado correctamente",
-                }
-            ),
-            200,
-        )
+        return jsonify({
+            "ok": True,
+            "mensaje": f"Reporte APV para {sucursal} finalizado y guardado correctamente",
+        }), 200
 
     except subprocess.CalledProcessError as e:
-        # Si el script falla (por ejemplo, error de Excel o de red), entra aquí
+        # Aquí capturamos el error si el script de Python falla internamente
         print("ERROR EN EL SCRIPT APV:")
         print(e.stderr)
-        return (
-            jsonify(
-                {
-                    "ok": False,
-                    "error": "El proceso de reporte APV falló internamente",
-                    "detalles": e.stderr,
-                }
-            ),
-            500,
-        )
-
+        return jsonify({
+            "ok": False,
+            "error": "El proceso de reporte APV falló internamente",
+            "detalles": e.stderr,
+        }), 500
 
 @app.route("/actualizar-datos", methods=["POST"])
 def actualizar():
@@ -128,15 +119,11 @@ def actualizar():
     comando = f'python "{script}" {mes} {anio} "{token}" "{sucursal}"'
 
     try:
-        # Ejecucion sincrona: Flask espera la finalizacion del proceso
-        resultado = subprocess.run(
-            comando, shell=True, capture_output=True, text=True, check=True
-        )
-        return jsonify({"ok": True, "mensaje": "Proceso finalizado y guardado"}), 200
+        subprocess.run(comando, shell=True, capture_output=True, text=True, check=True)
+        return jsonify({"ok": True, "mensaje": "Proceso finalizado"}), 200
     except subprocess.CalledProcessError as e:
-        print(f"Error: {e.stderr}")
-        return jsonify({"ok": False, "error": "Error en la ejecucion del script"}), 500
-
+        return jsonify({"ok": False, "error": "Error en la ejecución"}), 500
 
 if __name__ == "__main__":
+    # Importante: No uses debug=True en producción porque puede reiniciar el proceso
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)

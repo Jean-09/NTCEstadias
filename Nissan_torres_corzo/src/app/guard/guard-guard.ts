@@ -24,7 +24,6 @@ export const guardGuard: CanActivateFn = async (route, state) => {
         window.location.href = '/login';
         return false
       }
-      console.log(user)
       return true
     } catch (error) {
       localStorage.removeItem('token')

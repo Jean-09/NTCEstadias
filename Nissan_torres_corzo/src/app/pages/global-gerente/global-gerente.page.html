@@ -7,9 +7,14 @@
       <img src="assets/nissan.png" class="logo" />
       <div>
         <span class="subtitle">Grupo Torres Corzo</span>
-        <ion-title>Reportes Gerentes</ion-title>
+        <ion-title>Reportes Gerentes ({{sucursal.Sucursal}})</ion-title>
       </div>
     </div>
+          <ion-buttons slot="end">
+          <ion-button (click)="logout()">
+            <ion-icon name="log-out-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -74,7 +79,77 @@
     </ion-item>
   </div>
 
-  <!-- Tabla de Reporte con tus estilos originales -->
+  <ion-button (click)="abrirModalApv()" class="btn-nissan-red" fill="solid">
+    <ion-icon name="people-circle-outline" slot="start"></ion-icon>
+    Configurar Gerentes/APV
+  </ion-button>
+
+<ion-modal [isOpen]="modalApv" (didDismiss)="cerrarModalApv()" class="modal-config">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar class="header-nissan">
+        <ion-title>{{ modoEdicion ? 'Editar APV' : 'Nuevos APV' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="cerrarModalApv()" color="light">Cerrar</ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="dark-content ion-padding">
+      <div class="modern-card">
+        <div class="card-header">
+          <h3><ion-icon name="person-add-outline"></ion-icon> Datos del Gerente</h3>
+          <p>Configuración de APVs</p>
+        </div>
+
+        <ion-item lines="none" class="modern-input">
+          <ion-label position="stacked">Nombre del Gerente</ion-label>
+          <ion-input [(ngModel)]="formApv.gerente" placeholder="NOMBRE COMPLETO"
+            (ionInput)="formApv.gerente = formApv.gerente.toUpperCase()"></ion-input>
+        </ion-item>
+
+        <ion-item lines="none" class="modern-input">
+          <ion-label position="stacked">Cantidad de APVs</ion-label>
+          <ion-input type="number" [(ngModel)]="formApv.num_apv" placeholder="Ej: 22"></ion-input>
+        </ion-item>
+
+        <ion-button expand="block" class="btn-nissan-red" 
+          (click)="modoEdicion ? actualizarApv() : crearApv()">
+          <ion-icon [name]="modoEdicion ? 'save-outline' : 'add-outline'" slot="start"></ion-icon>
+          {{ modoEdicion ? 'Actualizar APV' : 'Guardar APV' }}
+        </ion-button>
+        
+        <ion-button *ngIf="modoEdicion" expand="block" fill="clear" color="medium" (click)="resetForm()">
+          Cancelar Edición
+        </ion-button>
+      </div>
+
+      <div class="modern-card">
+        <div class="card-header">
+          <h3><ion-icon name="list-outline"></ion-icon> APV'S Actuales</h3>
+        </div>
+
+        <ion-list class="dark-list" lines="full">
+          <ion-item *ngFor="let item of listaApvGerentes" class="item-gerente">
+            <ion-label>
+              <h2 class="bold-text">{{ item.gerente }}</h2>
+              <p class="apv-badge">APV's: <span>{{ item.Num_apv }} </span></p>
+            </ion-label>
+            <ion-buttons slot="end">
+              <ion-button color="primary" (click)="editarApv(item)">
+                <ion-icon name="create-outline"></ion-icon>
+              </ion-button>
+              <ion-button color="danger" (click)="eliminarApv(item.documentId)">
+                <ion-icon name="trash-outline"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+        </ion-list>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
   <div class="excel-frame" *ngIf="reporteActual && obtenerDia(reporteActual.fecha) !== 0">
     <table id="tablaReporte">
       <thead>

@@ -241,3 +241,47 @@ ion-datetime-button {
 ion-select {
   color: #ffffff;
 }
+
+.modal-actualizar {
+  --iron-background: #333;
+  
+  &::part(handle) {
+    background: #C3002F;
+    width: 50px;
+  }
+
+  &::part(content) {
+    border-radius: 20px 20px 0 0;
+  }
+
+  .header-nissan {
+    --background: #C3002F;
+    --color: white;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .btn-close {
+    font-size: 20px;
+    --color: white;
+  }
+
+  .modal-body-wrapper {
+    background: #121212;
+    height: 100%;
+  }
+
+  /* Ajuste para que el botón de fecha de Ionic no se vea gris genérico */
+  ion-datetime-button {
+    --background: #2b2b2b;
+    --color: white;
+    border: 1px solid #C3002F;
+    border-radius: 8px;
+  }
+}
+
+/* Estilo para los items de selección en modo oscuro */
+ion-select {
+  --placeholder-color: #888;
+  --color: white;
+}

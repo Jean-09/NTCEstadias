@@ -1,5 +1,5 @@
 <ion-header [translucent]="true">
-   <ion-toolbar class="toolbar-nissan">
+  <ion-toolbar class="toolbar-nissan">
     <ion-buttons slot="start">
       <ion-back-button></ion-back-button>
     </ion-buttons>
@@ -8,79 +8,75 @@
       <div>
         <span class="subtitle">Grupo Torres Corzo</span>
         <ion-title>APV {{sucursal}}</ion-title>
-        
+
       </div>
     </div>
+    <ion-buttons slot="end">
+      <ion-button (click)="logout()">
+        <ion-icon name="log-out-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 
-<ion-toolbar *ngIf="gerenteSeleccionado" class="gerente-toolbar">
-  <div class="gerente-container">
+  <ion-toolbar *ngIf="gerenteSeleccionado" class="gerente-toolbar">
+    <div class="gerente-container">
 
-    <ion-button fill="clear" class="nav-btn" (click)="anteriorGerente()">
-      <ion-icon slot="icon-only" name="chevron-back-outline"></ion-icon>
-    </ion-button>
+      <ion-button fill="clear" class="nav-btn" (click)="anteriorGerente()">
+        <ion-icon slot="icon-only" name="chevron-back-outline"></ion-icon>
+      </ion-button>
 
-    <div class="gerente-info">
-      <div class="gerente-nombre">
-        {{ gerenteSeleccionado }}
+      <div class="gerente-info">
+        <div class="gerente-nombre">
+          {{ gerenteSeleccionado }}
+        </div>
+
+        <div class="gerente-posicion">
+          Gerente {{ Object.keys(paginas).indexOf(gerenteSeleccionado) + 1 }}
+          de {{ Object.keys(paginas).length }}
+        </div>
       </div>
 
-      <div class="gerente-posicion">
-        Gerente {{ Object.keys(paginas).indexOf(gerenteSeleccionado) + 1 }}
-        de {{ Object.keys(paginas).length }}
-      </div>
+      <ion-button fill="clear" class="nav-btn" (click)="siguienteGerente()">
+        <ion-icon slot="icon-only" name="chevron-forward-outline"></ion-icon>
+      </ion-button>
+
     </div>
-
-    <ion-button fill="clear" class="nav-btn" (click)="siguienteGerente()">
-      <ion-icon slot="icon-only" name="chevron-forward-outline"></ion-icon>
-    </ion-button>
-
-  </div>
-</ion-toolbar>
+  </ion-toolbar>
 </ion-header>
 
 <ion-content>
-<div class="modern-card">
+  <div class="modern-card">
 
-  <div class="card-header">
-    <h3>
-      <ion-icon name="analytics-outline"></ion-icon>
-      Generador de Reportes
-    </h3>
-    <p>Configura el corte de información para procesar los indicadores.</p>
+    <div class="card-header">
+      <h3>
+        <ion-icon name="analytics-outline"></ion-icon>
+        Generador de Reportes
+      </h3>
+      <p>Configura el corte de información para procesar los indicadores.</p>
+    </div>
+
+    <ion-item class="modern-input">
+      <ion-label position="stacked">
+        Procesar hasta el día
+      </ion-label>
+
+      <ion-input type="number" placeholder="Ej: 31" [(ngModel)]="diaLimite" min="1" max="31" inputmode="numeric"
+        class="small-input">
+      </ion-input>
+
+      <ion-note slot="helper">
+        Indica el día límite para calcular el desempeño mensual.
+      </ion-note>
+    </ion-item>
+
+    <ion-button expand="block" class="btn-nissan-red" (click)="dispararAutomatizacion()">
+
+      <ion-icon name="play-circle-outline" slot="start"></ion-icon>
+      Lanzar Automatización
+
+    </ion-button>
+
   </div>
-
-  <ion-item class="modern-input">
-    <ion-label position="stacked">
-      Procesar hasta el día
-    </ion-label>
-
-    <ion-input
-      type="number"
-      placeholder="Ej: 31"
-      [(ngModel)]="diaLimite"
-      min="1"
-      max="31"
-      inputmode="numeric"
-      class="small-input">
-    </ion-input>
-
-    <ion-note slot="helper">
-      Indica el día límite para calcular el desempeño mensual.
-    </ion-note>
-  </ion-item>
-
-  <ion-button
-    expand="block"
-    class="btn-nissan-red"
-    (click)="dispararAutomatizacion()">
-
-    <ion-icon name="play-circle-outline" slot="start"></ion-icon>
-    Lanzar Automatización
-
-  </ion-button>
-
-</div>
   <ion-fab vertical="bottom" horizontal="end" slot="fixed">
     <ion-fab-button (click)="exportarExcel()" style="--background: #C3002F;">
       <ion-icon name="download-outline"></ion-icon>
@@ -141,7 +137,8 @@
                 <td [style]="semaforos['global-' + iCol + '-' + c.key + '-mad']">
                   {{ getPorcentaje(col.global?.Maduracion?.[c.key], i, col, 22) }}%
                 </td>
-                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i, col.global) }}</td>
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i,
+                  col.global) }}</td>
               </tr>
             </tbody>
           </table>
@@ -176,7 +173,8 @@
                 <td [style]="semaforos['gerente-' + iCol + '-' + c.key + '-mad']">
                   {{ getPorcentaje(col.gerente?.Maduracion?.[c.key], i, col, col.vendedores.length) }}%
                 </td>
-                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i, col.gerente) }}</td>
+                <td *ngIf="iCol > 0" style="font-weight: bold; background-color: white;">{{ getConversionD(i,
+                  col.gerente) }}</td>
               </tr>
             </tbody>
           </table>

@@ -2,8 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { ExcelService } from 'src/app/service/exel-service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular';
+import { Login } from 'src/app/service/login';
 
 @Component({
   selector: 'app-apv',
@@ -31,7 +32,7 @@ export class APVPage implements OnInit {
     { nombre: 'DESEMBOLSADAS', key: 'desenbolsadas' },
     { nombre: 'ENTREGAS', key: 'entregas' }
   ];
-  constructor(private api: ExcelService, private act: ActivatedRoute, private alertCtrl: AlertController, private toastCtrl: ToastController) {
+  constructor(private api: ExcelService, private act: ActivatedRoute, private alertCtrl: AlertController, private toastCtrl: ToastController, private login: Login, private router: Router) {
     this.id = this.act.snapshot.paramMap.get('sucursal') as string;
   }
 
@@ -505,4 +506,15 @@ export class APVPage implements OnInit {
     });
     toast.present();
   }
+
+    logout() {
+    try {
+      this.login.logout();
+      this.presentToast('Sesión cerrada', 'success');
+      this.router.navigate(['/login']);
+    } catch (error) {
+      this.presentToast('Error al cerrar sesión', 'danger');
+    }
+  }
+
 }
